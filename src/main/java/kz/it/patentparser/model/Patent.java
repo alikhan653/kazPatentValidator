@@ -3,6 +3,9 @@ package kz.it.patentparser.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDate;
+import java.util.List;
+
 @Entity
 @Table(name = "patents")
 @Getter
@@ -11,34 +14,40 @@ import lombok.*;
 @AllArgsConstructor
 @ToString
 public class Patent {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private String title;  // Название патента
-    private String applicationNumber;  // Номер заявки
-    private String filingDate;  // Дата подачи
-    @Column(length = 500)
-    private String authors;  // Авторы
-    private String patentHolder;  // Патентообладатель
-    private String securityDocNumber;  // Номер охранного документа
-    private String status;  // Статус
-    private String ipc;  // МПК
-    private String bulletinNumber;  // Номер бюллетеня
-    private String bulletinDate;  // Дата бюллетеня
-    private String typeOfDocument;  // Тип документа
 
-    public Patent(String title, String applicationNumber, String filingDate, String authors, String patentHolder, String securityDocNumber, String status, String ipc, String bulletinNumber, String bulletinDate, String typeOfDocument) {
-        this.title = title;
-        this.applicationNumber = applicationNumber;
-        this.filingDate = filingDate;
-        this.authors = authors;
-        this.patentHolder = patentHolder;
-        this.securityDocNumber = securityDocNumber;
+    private String securityDocNumber;
+    private String registrationNumber;
+    private String status;
+    private String applicationNumber;
+    private LocalDate filingDate;
+    private LocalDate registrationDate;
+    private LocalDate expirationDate;
+    private LocalDate bulletinDate;
+    private String title;
+    private String name;
+    private String bulletinNumber;
+    private String ipc;
+    private String mkpo;
+    private String sortName;
+    private String patentHolder;
+    private String authors;
+    private String owner;
+    private String category;
+
+    @OneToMany(mappedBy = "patent", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PatentAdditionalField> additionalFields;
+
+    // Getters and setters
+
+
+    public Patent(String status, String bulletinNumber, LocalDate bulletinDate, String category) {
         this.status = status;
-        this.ipc = ipc;
         this.bulletinNumber = bulletinNumber;
         this.bulletinDate = bulletinDate;
-        this.typeOfDocument = typeOfDocument;
+        this.category = category;
     }
 }
+

@@ -1,6 +1,8 @@
 package kz.it.patentparser.controller;
 
 
+import kz.it.patentparser.parser.PatentParser;
+import kz.it.patentparser.processor.PatentProcessor;
 import kz.it.patentparser.service.PatentParserService;
 import org.springframework.web.bind.annotation.*;
 
@@ -8,15 +10,15 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/patents")
 public class PatentController {
 
-    private final PatentParserService patentParserService;
+    private final PatentProcessor patentProcessor;
 
-    public PatentController(PatentParserService patentParserService) {
-        this.patentParserService = patentParserService;
+
+    public PatentController(PatentProcessor patentProcessor, PatentParserService patentParserService) {
+        this.patentProcessor = patentProcessor;
     }
 
     @PostMapping("/parse")
-    public String startParsing() {
-        patentParserService.parseAllCategories();
-        return "Парсинг завершен!";
+    public void parse() {
+        patentProcessor.runAllParsers();
     }
 }
