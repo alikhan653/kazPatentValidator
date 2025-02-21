@@ -18,7 +18,14 @@ public class PatentController {
     }
 
     @PostMapping("/parse")
-    public void parse() {
+    public String parse() {
         patentProcessor.runAllParsers();
+        return "Парсинг завершен!";
+    }
+
+    @PostMapping("/parse/{parserName}")
+    public String parse(@PathVariable String parserName) {
+        patentProcessor.runAllCategoriesForParser(parserName);
+        return "Парсинг завершен!";
     }
 }

@@ -2,11 +2,11 @@ package kz.it.patentparser.parser;
 
 import kz.it.patentparser.model.Patent;
 import kz.it.patentparser.model.PatentAdditionalField;
-import kz.it.patentparser.parser.PatentParser;
 import kz.it.patentparser.service.PatentService;
 import kz.it.patentparser.validator.PatentValidator;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
@@ -38,40 +38,47 @@ public class GosReestrPatentParser implements PatentParser {
 
     @Override
     public List<Patent> parse() {
-        WebDriver webDriver = new ChromeDriver();
-        WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(20));
         List<Patent> patents = new ArrayList<>();
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--disable-dev-shm-usage");
+        options.addArguments("--no-sandbox");
+        WebDriver webDriver = new ChromeDriver(options);
 
-        logger.info("Starting patent parsing process...");
-        webDriver.get("https://gosreestr.kazpatent.kz/");
-        logger.info("Opened KazPatent website.");
+        try {
+            WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(20));
 
-        Map<String, String> categories = getCategories();
+            logger.info("Starting patent parsing process...");
+            webDriver.get("https://gosreestr.kazpatent.kz/");
+            logger.info("Opened KazPatent website.");
 
-        for (Map.Entry<String, String> category : categories.entrySet()) {
-            try {
-                logger.info("Processing category: {}", category.getKey());
-                Thread.sleep(3000);
-                selectCategory(webDriver, wait, category.getKey(), category.getValue());
-                Thread.sleep(3000);
-                patents.addAll(parsePatents(webDriver, wait, category.getKey()));
-            } catch (Exception e) {
-                logger.error("Error parsing category: {}", category.getKey(), e);
+            Map<String, String> categories = getCategories();
+
+            for (Map.Entry<String, String> category : categories.entrySet()) {
+                try {
+                    logger.info("Processing category: {}", category.getKey());
+                    Thread.sleep(3000);
+                    selectCategory(webDriver, wait, category.getKey(), category.getValue());
+                    Thread.sleep(3000);
+                    patents.addAll(parsePatentsWithPagination(webDriver, wait, category.getKey()));
+                } catch (Exception e) {
+                    logger.error("Error parsing category: {}", category.getKey(), e);
+                }
             }
-        }
 
-        logger.info("Patent parsing process completed.");
-        webDriver.quit();
-        return patents;
+            logger.info("Patent parsing process completed.");
+            return patents;
+        } finally {
+            webDriver.quit(); // Ensures WebDriver is closed
+        }
     }
 
     private Map<String, String> getCategories() {
         Map<String, String> categories = new LinkedHashMap<>();
         categories.put("Изобретения", "cbReestrType_DDD_L_LBI1T0");
-        categories.put("Полезные модели", "cbReestrType_DDD_L_LBI2T0");
-        categories.put("Селекционные достижения", "cbReestrType_DDD_L_LBI4T0");
-        categories.put("Товарные знаки", "cbReestrType_DDD_L_LBI5T0");
-        categories.put("Общеизвестные товарные знаки", "cbReestrType_DDD_L_LBI6T0");
+//        categories.put("Полезные модели", "cbReestrType_DDD_L_LBI2T0");
+//        categories.put("Селекционные достижения", "cbReestrType_DDD_L_LBI4T0");
+//        categories.put("Товарные знаки", "cbReestrType_DDD_L_LBI5T0");
+//        categories.put("Общеизвестные товарные знаки", "cbReestrType_DDD_L_LBI6T0");
         return categories;
     }
 
@@ -100,13 +107,59 @@ public class GosReestrPatentParser implements PatentParser {
             logger.error("Could not find dropdown elements for category: {}", categoryName, e);
         }
     }
-    private List<Patent> parsePatents(WebDriver webDriver, WebDriverWait wait, String category) {
+
+    private List<Patent> parsePatentsWithPagination(WebDriver webDriver, WebDriverWait wait, String category) throws InterruptedException {
+        List<Patent> patents = new ArrayList<>();
+        int currentPage = 1;
+
+        setPageSizeTo200(webDriver, wait);
+        Thread.sleep(3000);
+        JavascriptExecutor js = (JavascriptExecutor) webDriver;
+
+        while (true) {
+            js.executeScript("window.scrollTo(0, 0);");
+            List<Patent> pagePatents = parsePatents(webDriver, wait, category, js);
+            patents.addAll(pagePatents);
+            logger.info("Parsed {} patents on page: {}", pagePatents.size(), currentPage);
+
+            try {
+                List<WebElement> nextPageButtons = wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(By.cssSelector("a.dxp-button.dxp-bi.dxRoundRippleTarget.dxRippleTarget")));
+                WebElement nextPageButton = nextPageButtons.get(nextPageButtons.size() - 1);
+                logger.info("Navigating to next page..." + nextPageButton.getTagName() + " " + nextPageButton.toString());
+                nextPageButton.click();
+
+                wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("LoadingPanel_LD")));
+                Thread.sleep(3000);
+                logger.info("Navigated to page: {}", ++currentPage);
+            } catch (NoSuchElementException | TimeoutException e) {
+                logger.info("No more pages found. Stopping pagination." + e.getMessage());
+                break;
+            }
+        }
+        return patents;
+    }
+
+    private List<Patent> parsePatents(WebDriver webDriver, WebDriverWait wait, String category, JavascriptExecutor js) throws InterruptedException {
         List<Patent> patents = new ArrayList<>();
 
-        logger.info("Parsing patents for category: {}", category);
+        logger.debug("Parsing patents for category: {}", category);
 
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("cvReestr_DXMainTable")));
-        logger.info("Search results loaded for category: {}", category);
+        logger.debug("Search results loaded for category: {}", category);
+
+        int lastHeight = ((Number) js.executeScript("return document.body.scrollHeight")).intValue();
+        while (true) {
+            // Scroll to the bottom of the page
+            js.executeScript("window.scrollTo(0, document.body.scrollHeight);");
+
+            Thread.sleep(2000); // Give time for new content to load
+
+            int newHeight = ((Number) js.executeScript("return document.body.scrollHeight")).intValue();
+            if (newHeight == lastHeight) {
+                break; // Stop when no new content is loaded
+            }
+            lastHeight = newHeight;
+        }
 
         List<WebElement> patentCards = webDriver.findElements(By.cssSelector("div.dxcvFlowCard_Material"));
 
@@ -117,18 +170,18 @@ public class GosReestrPatentParser implements PatentParser {
 
         for (WebElement card : patentCards) {
             try {
-                logger.info("Card text: {}", card.getText());
+                logger.debug("Card text: {}", card.getText());
 
                 Patent patent = extractPatentData(card.getText(), category);
                 if (patentService.isPatentExists(patent)) {
-                    logger.info("Patent already exists, skipping: {}", patent.getTitle());
+                    logger.info("Patent already exists, skipping: {}", (patent.getRegistrationNumber() == null || patent.getRegistrationNumber().isEmpty())  ? patent.getSecurityDocNumber() : patent.getRegistrationNumber());
                     continue;
                 }
                 if (validator.isValid(patent)) {
                     patentService.savePatent(patent);
                     saveAdditionalFields(patent, card.getText());
                     patents.add(patent);
-                    logger.info("Saved patent: {}", patent.getStatus());
+                    logger.info("Saved patent: {}", (patent.getRegistrationNumber() == null || patent.getRegistrationNumber().isEmpty())  ? patent.getSecurityDocNumber() : patent.getRegistrationNumber());
                 } else {
                     logger.warn("Invalid patent data, skipping: {}", patent);
                 }
@@ -138,6 +191,29 @@ public class GosReestrPatentParser implements PatentParser {
         }
         return patents;
     }
+
+    private void setPageSizeTo200(WebDriver webDriver, WebDriverWait wait) {
+        try {
+            // Wait for the page size dropdown to be visible
+            WebElement pageSizeDropdown = wait.until(ExpectedConditions.elementToBeClickable(By.id("cvReestr_DXPagerTop_PSB")));
+            pageSizeDropdown.click();
+
+            wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("LoadingPanel_LD")));
+
+            WebElement lastOption = wait.until(ExpectedConditions.visibilityOfElementLocated(
+                    By.id("cvReestr_DXPagerTop_PSP_DXI4_")
+            ));
+            lastOption.click();
+
+            // Wait for the page to reload after changing page size
+            wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("LoadingPanel_LD")));
+            wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("cvReestr_LD")));
+
+        } catch (Exception e) {
+            logger.error("Failed to set page size to 200", e);
+        }
+    }
+
 
     private Patent extractPatentData(String cardText, String category) {
         Patent patent = new Patent();
@@ -185,10 +261,10 @@ public class GosReestrPatentParser implements PatentParser {
                 "№ охранного документа", "Статус", "МПК", "Номер бюллетеня", "Дата бюллетеня").contains(label);
     }
 
-    private String getFieldValue(String card, String regex) {
-        Pattern pattern = Pattern.compile(regex + "\\s*:?\\s*(.*)"); // Поддержка ":" и пробела
-        Matcher matcher = pattern.matcher(card);
-        return matcher.find() ? matcher.group(1).trim() : null;
+    private String getFieldValue(String text, String regex) {
+        Pattern pattern = Pattern.compile(regex + "\s*:?\s*(.*)");
+        Matcher matcher = pattern.matcher(text);
+        return matcher.find() ? (matcher.group(1) != null ? matcher.group(1).trim() : "") : null;
     }
 
     private LocalDate getDateField(String card, String regex) {

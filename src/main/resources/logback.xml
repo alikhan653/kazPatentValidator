@@ -20,14 +20,16 @@
     </appender>
 
     <!-- 3. Файл для логов ошибок -->
-    <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>logs/error.log</file>
+    <appender name="ERRORS" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/errors.log</file>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
+        </filter>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>logs/error-%d{yyyy-MM-dd}.log</fileNamePattern>
-            <maxHistory>30</maxHistory>
+            <fileNamePattern>logs/errors-%d{yyyy-MM-dd}.log</fileNamePattern>
         </rollingPolicy>
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%level] %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
@@ -43,21 +45,53 @@
         </encoder>
     </appender>
 
-    <!-- 5. Логгер для ошибок (записывает только ERROR) -->
-    <logger name="ERROR_LOGGER" level="ERROR" additivity="false">
-        <appender-ref ref="ERROR_FILE"/>
+    <!-- Appender для EbulletinPatentParser -->
+    <appender name="EBULLETIN" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/ebulletin.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/ebulletin-%d{yyyy-MM-dd}.log</fileNamePattern>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%level] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Appender для GosReestrPatentParser -->
+    <appender name="GOSREESTR" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/gosreestr.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/gosreestr-%d{yyyy-MM-dd}.log</fileNamePattern>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%level] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Глобальный логгер (все логи) -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="ALL_FILE"/>
+    </root>
+
+    <!-- Общие настройки логирования -->
+    <logger name="kz.it.patentparser.parser.EbulletinPatentParser" level="DEBUG" additivity="false">
+        <appender-ref ref="EBULLETIN"/>
     </logger>
 
-    <!-- 6. Логгер для PatentParserService -->
+    <logger name="kz.it.patentparser.parser.GosReestrPatentParser" level="INFO" additivity="false">
+        <appender-ref ref="GOSREESTR"/>
+    </logger>
+
+    <!-- Логгер для ошибок (записывает только ERROR) -->
+    <logger name="kz.it.patentparser" level="INFO">
+        <appender-ref ref="ERRORS"/>
+    </logger>
+
+    <!-- Логгер для PatentParserService -->
     <logger name="kz.it.kazpatentparser.service.PatentParserService" level="DEBUG" additivity="false">
         <appender-ref ref="PATENT_PARSER_FILE"/>
     </logger>
 
-    <!-- 7. Глобальный логгер (все логи) -->
-    <root level="INFO">
-        <appender-ref ref="CONSOLE"/>
-        <appender-ref ref="ALL_FILE"/>
-        <appender-ref ref="PATENT_PARSER_FILE"/>
-    </root>
+
 
 </configuration>

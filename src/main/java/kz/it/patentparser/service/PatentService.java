@@ -38,6 +38,22 @@ public class PatentService {
 
     @Transactional
     public boolean isPatentExists(Patent patent) {
-        return patentRepository.findBySecurityDocNumberOrRegistrationNumber(patent.getSecurityDocNumber(), patent.getRegistrationNumber()).isPresent();
+        if (patent == null) {
+            throw new IllegalArgumentException("Patent cannot be null");
+        }
+
+        String securityDocNumber = patent.getSecurityDocNumber() != null ? patent.getSecurityDocNumber() : null;
+        String registrationNumber = patent.getRegistrationNumber() != null ? patent.getRegistrationNumber() : null;
+
+        if (securityDocNumber == null && registrationNumber == null) {
+            return false; // No valid identifier to check
+        }
+
+        //search only for that field which is not null
+        if (securityDocNumber != null) {
+            return patentRepository.findBySecurityDocNumber(securityDocNumber).isPresent();
+        } else {
+            return patentRepository.findByRegistrationNumber(registrationNumber).isPresent();
+        }
     }
 }

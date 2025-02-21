@@ -9,6 +9,8 @@ import java.util.Optional;
 @Repository
 public interface PatentRepository extends JpaRepository<Patent, Long> {
     Optional<Patent> findByApplicationNumber(String applicationNumber);
+    Optional<Patent> findBySecurityDocNumber(String securityDocNumber);
+    Optional<Patent> findByRegistrationNumber(String registrationNumber);
 
-    Optional<Object> findBySecurityDocNumberOrRegistrationNumber(String securityDocNumber, String registrationNumber);
+    Optional<Patent> findBySecurityDocNumberOrRegistrationNumber(String securityDocNumber, String registrationNumber);
 }
