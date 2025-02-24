@@ -37,23 +37,28 @@ public class PatentService {
     }
 
     @Transactional
+    public void saveAllAdditionalFields(List<PatentAdditionalField> additionalFields) {
+        additionalFieldRepository.saveAll(additionalFields);
+    }
+
+    @Transactional
     public boolean isPatentExists(Patent patent) {
         if (patent == null) {
-            throw new IllegalArgumentException("Patent cannot be null");
+            return false;
         }
 
         String securityDocNumber = patent.getSecurityDocNumber() != null ? patent.getSecurityDocNumber() : null;
         String registrationNumber = patent.getRegistrationNumber() != null ? patent.getRegistrationNumber() : null;
-
+        String category = patent.getCategory() != null ? patent.getCategory() : null;
         if (securityDocNumber == null && registrationNumber == null) {
             return false; // No valid identifier to check
         }
 
         //search only for that field which is not null
         if (securityDocNumber != null) {
-            return patentRepository.findBySecurityDocNumber(securityDocNumber).isPresent();
+            return patentRepository.findBySecurityDocNumberAndCategory(securityDocNumber, category).isPresent();
         } else {
-            return patentRepository.findByRegistrationNumber(registrationNumber).isPresent();
+            return patentRepository.findByRegistrationNumberAndCategory(registrationNumber, category).isPresent();
         }
     }
 }

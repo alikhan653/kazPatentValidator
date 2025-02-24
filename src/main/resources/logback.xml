@@ -67,6 +67,16 @@
         </encoder>
     </appender>
 
+    <appender name="CHECKER" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/check.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/check-%d{yyyy-MM-dd}.log</fileNamePattern>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
     <!-- Глобальный логгер (все логи) -->
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
@@ -81,6 +91,11 @@
     <logger name="kz.it.patentparser.parser.GosReestrPatentParser" level="INFO" additivity="false">
         <appender-ref ref="GOSREESTR"/>
     </logger>
+
+    <logger name="kz.it.patentparser.service.PatentCheckerService" level="INFO" additivity="false">
+        <appender-ref ref="CHECKER"/>
+    </logger>
+
 
     <!-- Логгер для ошибок (записывает только ERROR) -->
     <logger name="kz.it.patentparser" level="INFO">

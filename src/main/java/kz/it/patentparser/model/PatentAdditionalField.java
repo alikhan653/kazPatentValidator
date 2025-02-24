@@ -20,6 +20,7 @@ public class PatentAdditionalField {
     private Patent patent;
     
     private String label;
+    @Column(columnDefinition = "TEXT")
     private String value;
 
     public PatentAdditionalField(Patent patent, String label, String value) {

@@ -7,17 +7,11 @@ import org.springframework.stereotype.Component;
 public class PatentValidator {
 
     public boolean isValid(Patent patent) {
-//        return isNotEmpty(patent.getTitle()) &&
-//               isNotEmpty(patent.getApplicationNumber()) &&
-//               isNotEmpty(patent.getFilingDate()) &&
-//               isNotEmpty(patent.getAuthors()) &&
-//               isNotEmpty(patent.getPatentHolder()) &&
-//               isNotEmpty(patent.getSecurityDocNumber()) &&
-//               isNotEmpty(patent.getStatus()) &&
-//               isNotEmpty(patent.getIpc()) &&
-//               isNotEmpty(patent.getBulletinNumber()) &&
-//               isNotEmpty(patent.getBulletinDate());
-        return isNotEmpty(patent.getStatus());
+        try{
+            return isNotEmpty(patent.getStatus());
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private boolean isNotEmpty(String value) {

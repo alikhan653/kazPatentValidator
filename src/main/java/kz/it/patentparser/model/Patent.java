@@ -38,14 +38,15 @@ public class Patent {
     private String mkpo;
     @Column(length = 500)
     private String sortName;
-    @Column(length = 1000)
+    @Column(columnDefinition = "TEXT")
     private String patentHolder;
-    @Column(length = 1000)
+    @Column(columnDefinition = "TEXT")
     private String authors;
-    @Column(length = 1000)
+    @Column(columnDefinition = "TEXT")
     private String owner;
     @Column(length = 50)
     private String category;
+    private String patentSite;
 
     @OneToMany(mappedBy = "patent", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PatentAdditionalField> additionalFields;

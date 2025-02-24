@@ -27,5 +27,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public interface PatentParser {
-    List<Patent> parse();
+    List<Patent> parseAll();
+    List<Patent> parseCategory(String category);
 }
