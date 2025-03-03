@@ -58,7 +58,7 @@
 
     <!-- Appender для GosReestrPatentParser -->
     <appender name="GOSREESTR" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>logs/gosreestr.log</file>
+        <file>logs/new-gosreestr.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <fileNamePattern>logs/gosreestr-%d{yyyy-MM-dd}.log</fileNamePattern>
         </rollingPolicy>

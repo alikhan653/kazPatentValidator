@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Поиск патентов</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+    .search-result {
+      padding: 15px;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      align-items: center;
+    }
+    .search-result img {
+      max-width: 100px;
+      max-height: 100px;
+      margin-right: 15px;
+    }
+    .search-result h3 {
+      font-size: 18px;
+      margin-bottom: 5px;
+    }
+    .search-result a {
+      font-size: 14px;
+      color: #1a0dab;
+      text-decoration: none;
+    }
+    .search-result a:hover {
+      text-decoration: underline;
+    }
+    .search-result .description {
+      font-size: 14px;
+      color: #4d5156;
+    }
+    .pagination {
+      margin-top: 20px;
+    }
+    .google-url {
+      font-size: 13px;
+      color: #006621;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container mt-4">
+
+  <!-- Форма поиска -->
+  <form id="searchForm" action="/patents" method="GET" class="row g-3 mb-4">
+    <div class="col-md-6">
+        <label for="query">Поиск по названию патента</label>
+      <input type="text" name="query" class="form-control" >
+    </div>
+    <div class="col-md-3">
+      <label for="startDate">Дата начала</label>
+      <input type="date" id="startDate" name="startDate" class="form-control">
+    </div>
+    <div class="col-md-3">
+      <label for="endDate">Дата окончания</label>
+      <input type="date" id="endDate" name="endDate" class="form-control">
+    </div>
+
+
+    <div class="col-md-3">
+      <select name="siteType" class="form-control">
+        <option value="">Все сайты</option>
+        <option value="ebulletin.kazpatent.kz">eBulletin</option>
+        <option value="gosreestr.kazpatent.kz">Gosreestr</option>
+      </select>
+    </div>
+    <div class="col-md-3">
+      <select name="expired" class="form-control">
+        <option value="">Все</option>
+        <option value="true">Истёкшие</option>
+        <option value="false">Активные</option>
+      </select>
+    </div>
+    <div class="col-md-3">
+      <select name="category" class="form-control">
+        <option value="0">Все категории</option>
+        <option value="1">Изобретения</option>
+        <option value="2">Полезные модели</option>
+        <option value="3">Селекционные достижения</option>
+        <option value="4">Товарные знаки</option>
+        <option value="5">Общеизвестные товарные знаки</option>
+      </select>
+    </div>
+
+    <div class="col-md-12">
+      <button type="submit" class="btn btn-primary">Найти</button>
+    </div>
+
+  </form>
+
+  <form  id="uploadForm" action="/patents/export" method="GET" class="row g-3 mb-4">
+    <div class="col-md-12">
+      <button type="submit" class="btn btn-primary">Выгрузить Эксель файл</button>
+    </div>
+  </form>
+
+    <!-- Количество патентов -->
+    <div>Найдено патентов: <strong th:text="${totalElements}"></strong></div>
+
+  <div th:if="${patents.isEmpty()}" class="alert alert-warning">Нет данных</div>
+
+  <div th:each="patent, iterStat : ${patents}" class="search-result">
+<!--    <th:block th:each="field : ${patent.additionalFields}">-->
+<!--      <th:block th:if="${field.label == 'Изображение'}">-->
+<!--        &lt;!&ndash; Если значение - это URL &ndash;&gt;-->
+<!--        <img th:if="${#strings.startsWith(field.value, 'http')}" th:src="${field.value}" alt="Изображение патента1" width="200">-->
+
+<!--        &lt;!&ndash; Если значение - это base64 &ndash;&gt;-->
+<!--        <img th:if="${!#strings.startsWith(field.value, 'http')}" th:src="'data:image/png;base64,' + ${field.value}" alt="Изображение патента2" width="200">-->
+<!--      </th:block>-->
+<!--    </th:block>-->
+
+
+    <th:block th:with="imageBase64=${#lists.size(patent.additionalFields.?[label == 'image_base64']) > 0 ? patent.additionalFields.?[label == 'image_base64'][0].value : ''}">
+      <th:block th:if="${not #strings.isEmpty(patent.imageUrl) or not #strings.isEmpty(imageBase64)}">
+        <img th:src="${not #strings.isEmpty(patent.imageUrl) ? patent.imageUrl : 'data:image/png;base64,' + imageBase64}" alt="Patent Image" />
+      </th:block>
+    </th:block>
+
+
+
+    <div>
+      <div>
+        <a class="google-url" th:onclick="|openPatentModal(${patent.id})|" th:text="'patents/' + ${patent.id}"></a>
+      </div>
+      <h3>
+        <a href="#" th:attr="data-id=${patent.id}" class="open-modal" th:onclick="|openPatentModal(${patent.id})|"  th:text="${patent.title}"></a>
+      </h3>
+      <p class="description">
+        <strong>№:</strong> <span th:text="${patent.securityDocNumber != null ? patent.securityDocNumber : patent.registrationNumber}"></span> |
+        <strong>Статус:</strong> <span th:text="${patent.status}"></span> |
+        <strong>Дата регистрации:</strong> <span th:text="${patent.registrationDate}"></span> |
+        <strong>Дата срока окончания:</strong> <span th:text="${patent.expirationDate}"></span> |
+        <strong>Владелец:</strong> <span th:text="${patent.owner}"></span>
+      </p>
+      <div th:if="${patent.additionalFields != null and not patent.additionalFields.isEmpty()}">
+        <h5>Дополнительные данные:</h5>
+        <ul>
+          <th:block th:each="field : ${patent.additionalFields}">
+            <li th:if="${field.label == 'Класс МКТУ'}"
+                th:text="${field.value.length() > 150 ? field.label + ': ' + field.value.substring(0, 150) + '...' : field.value}">
+            </li>
+          </th:block>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно -->
+  <div id="patentModal" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Детальная информация</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p id="modalImageContainer"><strong>Изображение:</strong> <img id="modalImage" src="" alt="Изображение" width="200"></p>
+          <p id="modalTitleContainer"><strong>Название:</strong> <span id="modalTitle"></span></p>
+          <p id="modalDocNumberContainer"><strong>Номер документа:</strong> <span id="modalDocNumber"></span></p>
+          <p id="modalStatusContainer"><strong>Статус:</strong> <span id="modalStatus"></span></p>
+          <p id="modalAppNumberContainer"><strong>Номер заявки:</strong> <span id="modalAppNumber"></span></p>
+          <p id="modalFilingDateContainer"><strong>Дата подачи:</strong> <span id="modalFilingDate"></span></p>
+          <p id="modalRegistrationDateContainer"><strong>Дата регистрации:</strong> <span id="modalRegistrationDate"></span></p>
+          <p id="modalExpirationDateContainer"><strong>Дата окончания:</strong> <span id="modalExpirationDate"></span></p>
+          <p id="modalBulletinDateContainer"><strong>Дата бюллетеня:</strong> <span id="modalBulletinDate"></span></p>
+          <p id="modalOwnerContainer"><strong>Владелец:</strong> <span id="modalOwner"></span></p>
+          <p id="modalCategoryContainer"><strong>Категория:</strong> <span id="modalCategory"></span></p>
+          <p id="modalPatentSiteContainer"><strong>Источник:</strong> <span id="modalPatentSite"></span></p>
+          <h5 id="modalAdditionalFieldsTitle" style="display: none;">Дополнительные данные:</h5>
+          <ul id="modalAdditionalFields"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Пагинация -->
+  <nav th:if="${totalPages > 1}" class="pagination">
+    <ul class="pagination justify-content-center">
+      <li class="page-item" th:classappend="${currentPage == 1} ? 'disabled'">
+        <a class="page-link" th:href="@{/patents(page=1)}">&laquo;</a>
+      </li>
+      <li class="page-item" th:if="${currentPage > 6}"><span class="page-link">...</span></li>
+      <li class="page-item" th:each="i : ${#numbers.sequence((currentPage > 5 ? currentPage - 5 : 1), (currentPage + 4 < totalPages ? currentPage + 4 : totalPages))}"
+          th:classappend="${i == currentPage} ? 'active'">
+        <a class="page-link" th:href="@{/patents(page=${i})}" th:text="${i}"></a>
+      </li>
+      <li class="page-item" th:if="${currentPage + 4 < totalPages}"><span class="page-link">...</span></li>
+      <li class="page-item" th:classappend="${currentPage == totalPages} ? 'disabled'">
+        <a class="page-link" th:href="@{/patents(page=${totalPages})}">&raquo;</a>
+      </li>
+    </ul>
+  </nav>
+
+</div>
+<script>
+  function openPatentModal(patentId) {
+    fetch(`/patents/details/${patentId}`)
+            .then(response => response.json())
+            .then(data => {
+              setImage("modalImage", "modalImageContainer", data.image);
+              setField("modalTitle", "modalTitleContainer", data.title);
+              setField("modalDocNumber", "modalDocNumberContainer", data.securityDocNumber || data.registrationNumber);
+              setField("modalStatus", "modalStatusContainer", data.status);
+              setField("modalAppNumber", "modalAppNumberContainer", data.applicationNumber);
+              setField("modalFilingDate", "modalFilingDateContainer", data.filingDate);
+              setField("modalRegistrationDate", "modalRegistrationDateContainer", data.registrationDate);
+              setField("modalExpirationDate", "modalExpirationDateContainer", data.expirationDate);
+              setField("modalBulletinDate", "modalBulletinDateContainer", data.bulletinDate);
+              setField("modalOwner", "modalOwnerContainer", data.owner);
+              setField("modalCategory", "modalCategoryContainer", data.category);
+              setField("modalPatentSite", "modalPatentSiteContainer", data.patentSite);
+
+              // Обработка дополнительных полей
+              let additionalFieldsContainer = document.getElementById("modalAdditionalFields");
+              additionalFieldsContainer.innerHTML = "";
+
+              if (data.additionalFields && data.additionalFields.length > 0) {
+                document.getElementById("modalAdditionalFieldsTitle").style.display = "block";
+                data.additionalFields.forEach(field => {
+                  let li = document.createElement("li");
+                  li.textContent = `${field.label}: ${field.value}`;
+                  additionalFieldsContainer.appendChild(li);
+                });
+              } else {
+                document.getElementById("modalAdditionalFieldsTitle").style.display = "none";
+              }
+
+              // Открытие модального окна
+              $('#patentModal').modal('show');
+            })
+            .catch(error => console.error("Ошибка загрузки данных:", error));
+  }
+
+  function setField(fieldId, containerId, value) {
+    if (value) {
+      document.getElementById(fieldId).textContent = value;
+      document.getElementById(containerId).style.display = "block";
+    } else {
+      document.getElementById(containerId).style.display = "none";
+    }
+  }
+
+  function setImage(fieldId, containerId, value) {
+    if (value) {
+      document.getElementById(fieldId).src = value;
+        document.getElementById(containerId).style.display = "block";
+    } else {
+        document.getElementById(containerId).style.display = "none";
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    // Select the modal and close button
+    const modal = document.getElementById("patentModal");
+    const closeButton = modal.querySelector(".close");
+
+    // Ensure modal hides when clicking the close button
+    closeButton.addEventListener("click", function () {
+      $("#patentModal").modal("hide");
+    });
+
+    // Remove aria-hidden when the modal is shown
+    $("#patentModal").on("shown.bs.modal", function () {
+      $(this).removeAttr("aria-hidden");
+    });
+
+    // Restore aria-hidden and remove focus when modal is hidden
+    $("#patentModal").on("hidden.bs.modal", function () {
+      $(this).attr("aria-hidden", "true");
+      closeButton.blur();
+    });
+
+    // Allow closing the modal by clicking outside
+    window.addEventListener("click", function (event) {
+      if (event.target === modal) {
+        $("#patentModal").modal("hide");
+      }
+    });
+
+    // Ensure ESC key closes the modal
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") {
+        $("#patentModal").modal("hide");
+      }
+    });
+  });
+
+</script>
+</body>
+</html>
