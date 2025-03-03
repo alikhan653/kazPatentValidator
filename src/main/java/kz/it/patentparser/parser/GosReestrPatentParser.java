@@ -1,8 +1,9 @@
 package kz.it.patentparser.parser;
 
+import kz.it.patentparser.enums.NavigationDirection;
 import kz.it.patentparser.model.Patent;
 import kz.it.patentparser.model.PatentAdditionalField;
-import kz.it.patentparser.repository.DocNumberRepository;
+import kz.it.patentparser.service.ImageService;
 import kz.it.patentparser.service.PatentService;
 import kz.it.patentparser.service.PatentStorageService;
 import kz.it.patentparser.validator.PatentValidator;
@@ -29,8 +30,14 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.NoSuchElementException;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static kz.it.patentparser.util.TransliterationUtil.fixMixedCharacters;
 
 @Component
 public class GosReestrPatentParser implements PatentParser {
@@ -39,22 +46,26 @@ public class GosReestrPatentParser implements PatentParser {
 
     private final PatentValidator validator;
     private final PatentService patentService;
+    private final ImageService imageService;
+
 
     private final PatentStorageService patentStorageService;
 
     @Autowired
-    public GosReestrPatentParser(PatentService patentService, PatentValidator validator, PatentStorageService patentStorageService) {
+    public GosReestrPatentParser(PatentService patentService, PatentValidator validator, PatentStorageService patentStorageService, ImageService imageService) {
         this.patentService = patentService;
         this.validator = validator;
         this.patentStorageService = patentStorageService;
+        this.imageService = imageService;
     }
 
     @Override
-    public List<Patent> parseAll() {
+    public List<Patent> parseAll(String from, boolean both) {
         List<Patent> patents = new ArrayList<>();
         ChromeOptions options = new ChromeOptions();
         options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--no-sandbox");
+//        options.addArguments("--headless");
         WebDriver webDriver = new ChromeDriver(options);
 
         try {
@@ -70,7 +81,11 @@ public class GosReestrPatentParser implements PatentParser {
                 try {
                     logger.info("Processing category: {}", category.getKey());
                     selectCategory(webDriver, wait, category.getKey(), category.getValue());
-                    patents.addAll(parsePatentsWithPagination(webDriver, wait, category.getKey()));
+                    switchToTextView(webDriver, wait);
+                    Thread.sleep(3000);
+                    setPageSizeTo200(webDriver, wait);
+                    Thread.sleep(3000);
+                    patents.addAll(parsePatentsWithPagination(webDriver, wait, category.getKey(), from, both));
                 } catch (Exception e) {
                     logger.error("Error parsing category: {}", category.getKey(), e);
                 }
@@ -87,12 +102,17 @@ public class GosReestrPatentParser implements PatentParser {
 
     @Override
     public List<Patent> parseCategory(String category) {
+        return parseFrom(category, NavigationDirection.NEXT.getClassName(), false);
+    }
+
+    @Override
+    public List<Patent> parseFrom(String category, String from, boolean both) {
         List<Patent> patents = new ArrayList<>();
         ChromeOptions options = new ChromeOptions();
         options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--no-sandbox");
-        WebDriver webDriver = new ChromeDriver(options);
 
+        WebDriver webDriver = new ChromeDriver(options);
         try {
             WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(20));
 
@@ -106,11 +126,14 @@ public class GosReestrPatentParser implements PatentParser {
                 return patents;
             }
 
-
             try {
                 logger.info("Processing category: {}", category);
                 selectCategory(webDriver, wait, category, categoryId);
-                patents.addAll(parsePatentsWithPagination(webDriver, wait, category));
+                switchToTextView(webDriver, wait);
+                Thread.sleep(3000);
+                setPageSizeTo200(webDriver, wait);
+                Thread.sleep(3000);
+                patents.addAll(parsePatentsWithPagination(webDriver, wait, category, from, both));
             } catch (Exception e) {
                 logger.error("Error parsing category: {}", category, e);
             }
@@ -124,10 +147,10 @@ public class GosReestrPatentParser implements PatentParser {
 
     private Map<String, String> getCategories() {
         Map<String, String> categories = new LinkedHashMap<>();
-        categories.put("Изобретения", "cbReestrType_DDD_L_LBI1T0");
-        categories.put("Полезные модели", "cbReestrType_DDD_L_LBI2T0");
         categories.put("Селекционные достижения", "cbReestrType_DDD_L_LBI4T0");
         categories.put("Товарные знаки", "cbReestrType_DDD_L_LBI5T0");
+        categories.put("Изобретения", "cbReestrType_DDD_L_LBI1T0");
+        categories.put("Полезные модели", "cbReestrType_DDD_L_LBI2T0");
         categories.put("Общеизвестные товарные знаки", "cbReestrType_DDD_L_LBI6T0");
         return categories;
     }
@@ -158,23 +181,63 @@ public class GosReestrPatentParser implements PatentParser {
         }
     }
 
-    private List<Patent> parsePatentsWithPagination(WebDriver webDriver, WebDriverWait wait, String category) throws InterruptedException {
+    private void stepToLastPage(WebDriver webDriver, WebDriverWait wait) {
+        try {
+            List<WebElement> paginationButtons = wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(
+                    By.cssSelector("a.dxp-num.dxRoundRippleTarget.dxRippleTarget")));
+            WebElement lastPageButton = paginationButtons.get(paginationButtons.size() - 1);
+            logger.info("Navigating to last page: {}", lastPageButton.getText());
+            lastPageButton.click();
+            wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("CVReestr_LD")));
+            Thread.sleep(2000);
+            logger.info("Navigated to last page.");
+        } catch (TimeoutException e) {
+            logger.error("Timeout while navigating to last page: {}", e);
+        } catch (NoSuchElementException e) {
+            logger.error("No pagination buttons found: {}", e);
+        } catch (InterruptedException e) {
+            logger.error("Error navigating to last page: {}", e);
+        }
+    }
+
+    private int getLastPage(WebDriver webDriver, WebDriverWait wait) {
+        try {
+            List<WebElement> paginationButtons = wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(
+                    By.cssSelector("a.dxp-num.dxRoundRippleTarget.dxRippleTarget")));
+            WebElement lastPageButton = paginationButtons.get(paginationButtons.size() - 1);
+            return Integer.parseInt(lastPageButton.getText());
+        } catch (TimeoutException e) {
+            logger.error("Timeout while navigating to last page: {}", e);
+        } catch (NoSuchElementException e) {
+            logger.error("No pagination buttons found: {}", e);
+        }
+        return 1000;
+    }
+
+    private List<Patent> parsePatentsWithPagination(WebDriver webDriver, WebDriverWait wait, String category, String paginationId, boolean both) throws InterruptedException {
         List<Patent> patents = new ArrayList<>();
         int currentPage = 1;
+        int stoppingPage = 0;
+        if(NavigationDirection.PREVIOUS.getClassName().equals(paginationId)) {
+            stepToLastPage(webDriver, wait);
+            currentPage = getLastPage(webDriver, wait);
+            stoppingPage = currentPage/2;
+        } if(NavigationDirection.NEXT.getClassName().equals(paginationId)) {
+            stoppingPage = getLastPage(webDriver, wait)/2;
+        }
 
-        setPageSizeTo200(webDriver, wait);
-        Thread.sleep(3000);
         JavascriptExecutor js = (JavascriptExecutor) webDriver;
 
         while (true) {
-            scroll(js, false);
-            List<Patent> pagePatents = parsePatents(webDriver, wait, category, js);
-
-            savePatentData(pagePatents);
-
-            patents.addAll(pagePatents);
-            logger.info("Parsed {} patents on page: {}", pagePatents.size(), currentPage);
             try {
+
+                scroll(js, false);
+                List<Patent> pagePatents = parsePatents(webDriver, wait, category, js);
+
+                savePatentData(pagePatents);
+
+                logger.info("Parsed {} patents on page: {}", pagePatents.size(), currentPage);
+
                 // Wait until all buttons are visible
                 List<WebElement> pageButtons = wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(
                         By.cssSelector("a.dxp-button.dxp-bi.dxRoundRippleTarget.dxRippleTarget")));
@@ -183,21 +246,33 @@ public class GosReestrPatentParser implements PatentParser {
                 Optional<WebElement> nextButton = pageButtons.stream()
                         .filter(button -> {
                             List<WebElement> images = button.findElements(By.tagName("img"));
-                            return images.stream().anyMatch(img -> img.getAttribute("class").contains("dxWeb_pNext_Material"));
+                            return images.stream().anyMatch(img -> img.getAttribute("class").contains(paginationId));
                         })
                         .findFirst();
 
                 if (nextButton.isPresent()) {
                     nextButton.get().click();
                     wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("LoadingPanel_LD")));
-                    logger.info("Navigated to page: {}", ++currentPage);
+                    wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("cvReestr_LD")));
+                    logger.info("Processed pages: {}", NavigationDirection.PREVIOUS.getClassName().equals(paginationId) ? currentPage-- : currentPage++);
+                    if(both && NavigationDirection.PREVIOUS.getClassName().equals(paginationId) && currentPage <= stoppingPage) {
+                        logger.info("Stopping pagination at page: {}", currentPage);
+                        break;
+                    }if(both && NavigationDirection.NEXT.getClassName().equals(paginationId) && currentPage >= stoppingPage) {
+                        logger.info("Stopping pagination at page: {}", currentPage);
+                        break;
+                    }
                 } else {
-                    logger.info("No 'Next' button found. Stopping pagination.");
+                    logger.info("No pagination button found. Stopping pagination.");
                     break;
                 }
             } catch (NoSuchElementException | TimeoutException e) {
                 logger.info("Pagination stopped. No more pages or timeout: " + e.getMessage());
                 break;
+            } catch (StaleElementReferenceException e) {
+                logger.error("Stale element reference while navigating pages: {}", e);
+            } catch (Exception e) {
+                logger.error("Error parsing patents on page: {}", currentPage, e);
             }
 
         }
@@ -209,20 +284,31 @@ public class GosReestrPatentParser implements PatentParser {
         logger.debug("Parsing patents for category: {}", category);
 
         List<WebElement> patentCards = new ArrayList<>();
-        try{
-            wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("cvReestr_DXMainTable")));
-            logger.debug("Search results loaded for category: {}", category);
+        int count = 3;
+        while (count > 0) {
+            try {
+                wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("cvReestr_DXMainTable")));
+                logger.debug("Search results loaded for category: {}", category);
 
-            scroll(js, true);
+                scroll(js, true);
 
-            patentCards = wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(
-                    By.cssSelector("div.dxcvFlowCard_Material")));
-        } catch (TimeoutException e) {
-            logger.error("Timeout while waiting for patent cards to load: {}", e.getMessage());
-        } catch (NoSuchElementException e) {
-            logger.error("No patent cards found for category: {}", category);
-        } catch (StaleElementReferenceException e) {
-            logger.error("Stale element reference while waiting for patent cards to load: {}", e.getMessage());
+                patentCards = wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(
+                        By.cssSelector("div.dxcvFlowCard_Material")));
+                break; // Exit loop if successful
+            } catch (TimeoutException e) {
+                logger.error("Timeout while waiting for patent cards to load: {}", e.getMessage());
+                break;
+            } catch (NoSuchElementException e) {
+                logger.error("No patent cards found for category: {}", category);
+                break;
+            } catch (StaleElementReferenceException e) {
+                count--;
+                if (count > 0) {
+                    logger.warn("Stale element reference while waiting for patent cards to load. Retrying... Attempts left: {}", count);
+                } else {
+                    logger.error("Stale element reference persists, giving up: {}", e.getMessage());
+                }
+            }
         }
 
         if (patentCards.isEmpty()) {
@@ -230,39 +316,71 @@ public class GosReestrPatentParser implements PatentParser {
             return patents;
         }
 
-        for (WebElement card : patentCards) {
-            try {
-                WebElement linkElement = retryFindElement(card, js);
-                String detailUrl = linkElement.getAttribute("href");
+        for (int i = 0; i < patentCards.size(); i++) {
+            WebElement card = patentCards.get(i);
+            int retryCount = 0;
+            boolean success = false;
 
-                if (detailUrl == null || detailUrl.isEmpty()) {
-                    logger.warn("No detailed link found for a patent.");
-                    continue;
+            while (retryCount < 3 && !success) {
+                try {
+                    WebElement linkElement = retryFindElement(card, js);
+                    if(linkElement == null) {
+                        logger.warn("No detailed link found for a patent. " + card.getText());
+                        break;
+                    }
+                    String detailUrl = linkElement.getAttribute("href");
+
+                    if (detailUrl == null || detailUrl.isEmpty()) {
+                        logger.warn("No detailed link found for a patent.");
+                        break;
+                    }
+
+                    Patent patent = extractPatentData(card.getText(), category);
+                    logger.debug("Extracting patent data from card: {}", card.getText());
+
+                    logger.debug("Fetching detailed patent page: {}", detailUrl);
+                    Patent detailedPatent = fetchPatentDetails(detailUrl, category);
+
+                    mergePatentData(patent, detailedPatent);
+
+                    if (patentService.isPatentExists(patent)) {
+                        logger.info("Patent already exists, skipping: {}",
+                                patent.getSecurityDocNumber() != null ? patent.getSecurityDocNumber() : patent.getRegistrationNumber());
+                        break;
+                    }
+
+                    if (validator.isValid(patent)) {
+                        patents.add(patent);
+                        logger.info("Saved patent: {}",
+                                patent.getSecurityDocNumber() != null ? patent.getSecurityDocNumber() : patent.getRegistrationNumber());
+                    } else {
+                        logger.warn("Invalid patent data, skipping: {}", patent);
+                        int docNumber = Integer.parseInt(detailUrl.substring(detailUrl.lastIndexOf("=") + 1));
+                        patentStorageService.saveDocNumber(category, docNumber);
+                        logger.info("Saving docNumber: {}", docNumber);
+                    }
+
+                    success = true;// If execution reaches here, parsing was successful
+                } catch (StaleElementReferenceException e) {
+                    logger.warn("StaleElementReferenceException occurred while parsing patent. Retrying {}/3...", retryCount + 1);
+                    try {
+                        // Re-fetch patent cards
+                        patentCards = wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(
+                                By.cssSelector("div.dxcvFlowCard_Material")));
+                        card = patentCards.get(i);
+                    } catch (Exception retryEx) {
+                        logger.error("Failed to re-fetch elements after StaleElementReferenceException: {}", retryEx.getMessage());
+                        break; // Stop retrying if elements can't be retrieved
+                    }
+                    retryCount++;
+                    Thread.sleep(1000); // Wait before retrying
+                } catch (NoSuchElementException e) {
+                    logger.error("Error extracting patent data for category: {}", category, e);
+                    break;
+                } catch (Exception e) {
+                    logger.error("Error parsing patent for category: {}", category, e);
+                    break;
                 }
-                Patent patent = extractPatentData(card.getText(), category);
-                logger.debug("Extracting patent data from card: {}", card.getText());
-
-                logger.debug("Fetching detailed patent page: {}", detailUrl);
-                Patent detailedPatent = fetchPatentDetails(detailUrl, category);
-
-                mergePatentData(patent, detailedPatent);
-
-                if (patentService.isPatentExists(patent)) {
-                    assert patent != null;
-                    logger.info("Patent already exists, skipping: {}", patent.getSecurityDocNumber()!=null?patent.getSecurityDocNumber():patent.getRegistrationNumber());
-                    continue;
-                }
-
-                if (validator.isValid(patent)) {
-                    patents.add(patent);
-                    logger.info("Saved patent: {}", patent.getSecurityDocNumber()!=null?patent.getSecurityDocNumber():patent.getRegistrationNumber());
-                } else {
-                    logger.warn("Invalid patent data, skipping: {}", patent);
-                }
-            } catch (NoSuchElementException e) {
-                logger.error("Error extracting patent data for category: {}", category, e);
-            } catch (StaleElementReferenceException e) {
-                logger.error("Stale element reference while parsing patent, showing card data and error: {}, {}", card.getText(), e.getMessage());
             }
         }
         return patents;
@@ -270,7 +388,7 @@ public class GosReestrPatentParser implements PatentParser {
 
     private void savePatentData(List<Patent> patents) {
         logger.info("Saving patents to database...");
-        patentService.savePatents(patents);
+        patentService.savePatents(patents, logger);
         logger.info("Saved {} patents to database.", patents.size());
 
         List<PatentAdditionalField> additionalFields = patents.stream()
@@ -288,28 +406,52 @@ public class GosReestrPatentParser implements PatentParser {
     }
 
     private static void scroll(JavascriptExecutor js, boolean scrollToBottom) throws InterruptedException {
-        if (scrollToBottom) {
-            // Scroll to the bottom of the page
-            int lastHeight = ((Number) js.executeScript("return document.body.scrollHeight")).intValue();
-            while (true) {
-                js.executeScript("window.scrollTo(0, document.body.scrollHeight);");
-                Thread.sleep(2000); // Wait for content to load
+        //retry if any exception occurs
+        int attempts = 3;
+        while (attempts > 0) {
+            try {
+                if (scrollToBottom) {
+                    // Scroll to the bottom of the page
+                    int lastHeight = ((Number) js.executeScript("return document.body.scrollHeight")).intValue();
+                    while (true) {
+                        js.executeScript("window.scrollTo(0, document.body.scrollHeight);");
+                        Thread.sleep(2000); // Wait for content to load
 
-                int newHeight = ((Number) js.executeScript("return document.body.scrollHeight")).intValue();
-                if (newHeight == lastHeight) {
-                    break; // Stop when no new content is loaded
+                        int newHeight = ((Number) js.executeScript("return document.body.scrollHeight")).intValue();
+                        if (newHeight == lastHeight) {
+                            break; // Stop when no new content is loaded
+                        }
+                        lastHeight = newHeight;
+                    }
+                } else {
+                    // Scroll to the top of the page
+                    js.executeScript("window.scrollTo(0, 0);");
                 }
-                lastHeight = newHeight;
+                Thread.sleep(3000);
+                break;
+            } catch (Exception e) {
+                attempts--;
+                logger.error("Error scrolling page, retrying..." + e);
+                Thread.sleep(3000);
             }
-        } else {
-            // Scroll to the top of the page
-            js.executeScript("window.scrollTo(0, 0);");
         }
     }
 
     private void mergePatentData(Patent patent, Patent detailedPatent) {
         if (detailedPatent.getTitle() != null) {
             patent.setTitle(detailedPatent.getTitle());
+        }
+        if (detailedPatent.getStatus() != null) {
+            patent.setStatus(detailedPatent.getStatus());
+        }
+        if (detailedPatent.getSecurityDocNumber() != null) {
+            patent.setSecurityDocNumber(detailedPatent.getSecurityDocNumber());
+        }
+        if (detailedPatent.getRegistrationNumber() != null) {
+            patent.setRegistrationNumber(detailedPatent.getRegistrationNumber());
+        }
+        if (detailedPatent.getApplicationNumber() != null) {
+            patent.setApplicationNumber(detailedPatent.getApplicationNumber());
         }
         if (detailedPatent.getAuthors() != null) {
             patent.setAuthors(detailedPatent.getAuthors());
@@ -364,6 +506,9 @@ public class GosReestrPatentParser implements PatentParser {
             } catch (NoSuchElementException e) {
                 logger.error("No detailed link found in card: {}", card.getText());
                 return null;
+            } catch (NoSuchSessionException e) {
+                logger.error("Session expired, retrying...");
+                return null;
             } catch (Exception e) {
                 logger.error("Error finding detailed link in card: {}", card.getText(), e);
                 return null;
@@ -383,6 +528,7 @@ public class GosReestrPatentParser implements PatentParser {
 
                 Patent patent = new Patent();
                 patent.setCategory(category);
+                patent.setPatentSite("gosreestr.kazpatent.kz");
 
                 List<PatentAdditionalField> additionalFields = new ArrayList<>();
 
@@ -413,7 +559,9 @@ public class GosReestrPatentParser implements PatentParser {
                 Element imgElement = doc.selectFirst("div.plan_img5 img, div.plan_img img");
                 if (imgElement != null) {
                     String imgUrl = imgElement.absUrl("src");
-                    additionalFields.add(new PatentAdditionalField(patent, "Изображение", imgUrl));
+                    if(imgUrl != null) {
+                        patent.setImageUrl(imgUrl);
+                    }
                 }
 
                 patent.setAdditionalFields(additionalFields);
@@ -443,14 +591,34 @@ public class GosReestrPatentParser implements PatentParser {
         }
         return null;
     }
-
-    private void setPageSizeTo200(WebDriver webDriver, WebDriverWait wait) {
+    public void switchToTextView(WebDriver driver, WebDriverWait wait) {
         try {
-            // Wait for the page size dropdown to be visible
-            WebElement pageSizeDropdown = wait.until(ExpectedConditions.elementToBeClickable(By.id("cvReestr_DXPagerTop_PSB")));
-            pageSizeDropdown.click();
+
+            // Wait for the button to be present and visible
+            WebElement textViewButton = wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//button[@data-view='2']")));
+
+            // Scroll into view (fix for hidden buttons)
+            ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", textViewButton);
+
+            // Click using JavaScript (fix for non-interactable elements)
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", textViewButton);
 
             wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("LoadingPanel_LD")));
+            wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("cvReestr_LD")));
+
+            logger.info("Switched to 'Текст' view successfully.");
+        } catch (Exception e) {
+            logger.error("Failed to switch to 'Текст' view: " + e);
+        }
+    }
+    private void setPageSizeTo200(WebDriver webDriver, WebDriverWait wait) {
+        try {
+            Thread.sleep(3000);
+            WebElement pageSizeDropdown = wait.until(ExpectedConditions.elementToBeClickable(By.id("cvReestr_DXPagerTop_PSB")));
+            pageSizeDropdown.click();
+            wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("LoadingPanel_LD")));
+
+            Thread.sleep(2000);
 
             WebElement lastOption = wait.until(ExpectedConditions.visibilityOfElementLocated(
                     By.id("cvReestr_DXPagerTop_PSP_DXI4_")
@@ -458,13 +626,17 @@ public class GosReestrPatentParser implements PatentParser {
             lastOption.click();
 
             // Wait for the page to reload after changing page size
+            Thread.sleep(2000);
             wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("LoadingPanel_LD")));
             wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("cvReestr_LD")));
+
+        } catch (StaleElementReferenceException e) {
 
         } catch (Exception e) {
             logger.error("Failed to set page size to 200", e);
         }
     }
+
 
     private void setCoreField(Patent patent, String label, String value) {
         switch (label) {
@@ -495,6 +667,12 @@ public class GosReestrPatentParser implements PatentParser {
             case "МПК":
                 patent.setIpc(value);
                 break;
+            case "МКПО":
+                patent.setMkpo(value);
+                break;
+            case "МКТУ":
+                patent.setMkpo(value);
+                break;
             case "Номер бюллетеня":
                 patent.setBulletinNumber(value);
                 break;
@@ -521,48 +699,31 @@ public class GosReestrPatentParser implements PatentParser {
         Patent patent = new Patent();
         patent.setPatentSite("gosreestr.kazpatent.kz");
         patent.setCategory(category);
-
         // Extracting common fields
-        patent.setSecurityDocNumber(getFieldValue(cardText, "№ охранного документа:?"));
-        patent.setRegistrationNumber(getFieldValue(cardText, "№ регистрации:?"));
-        patent.setStatus(getFieldValue(cardText, "Статус:?"));
-        patent.setApplicationNumber(getFieldValue(cardText, "Номер заявки:?"));
-        patent.setFilingDate(getDateField(cardText, "Дата подачи заявки:?"));
-        patent.setRegistrationDate(getDateField(cardText, "Дата регистрации:?"));
-        patent.setExpirationDate(getDateField(cardText, "Срок действия:?"));
-        patent.setTitle(getFieldValue(cardText, "Название:?|Наименование сорта, породы:?"));
-        patent.setIpc(getFieldValue(cardText, "МПК:?"));
-        patent.setMkpo(getFieldValue(cardText, "МКПО:?"));
+//        patent.setSecurityDocNumber(getFieldValue(cardText, "№ охранного документа:?"));
+//        patent.setRegistrationNumber(getFieldValue(cardText, "№ регистрации:?"));
+//        patent.setStatus(getFieldValue(cardText, "Статус:?"));
+//        patent.setApplicationNumber(getFieldValue(cardText, "Номер заявки:?"));
+//        patent.setFilingDate(getDateField(cardText, "Дата подачи заявки:?"));
+//        patent.setRegistrationDate(getDateField(cardText, "Дата регистрации:?"));
+//        patent.setExpirationDate(getDateField(cardText, "Срок действия:?"));
+        String title = fixMixedCharacters(getFieldValue(cardText, "Название:?"));
+        patent.setTitle(title);
+//        patent.setIpc(getFieldValue(cardText, "МПК:?"));
+//        patent.setMkpo(getFieldValue(cardText, "МКПО:?|МКТУ:?"));
         patent.setBulletinNumber(getFieldValue(cardText, "Номер бюллетеня:?"));
         patent.setBulletinDate(getDateField(cardText, "Дата бюллетеня:?"));
-        patent.setSortName(getFieldValue(cardText, "Наименование сорта, породы:?"));
-        patent.setPatentHolder(getFieldValue(cardText, "Патентообладатель:?"));
         patent.setAuthors(getFieldValue(cardText, "Автор\\(-ы\\)?:?"));
-        patent.setOwner(getFieldValue(cardText, "Владелец:?"));
+//        patent.setSortName(getFieldValue(cardText, "Наименование сорта, породы:?"));
+//        patent.setPatentHolder(getFieldValue(cardText, "Патентообладатель:?"));
+//        patent.setOwner(getFieldValue(cardText, "Владелец:?"));
 
         return patent;
     }
 
-    private void saveAdditionalFields(Patent patent, String cardText) {
-        String[] lines = cardText.split("\n");
-
-        for (String line : lines) {
-            String[] parts = line.split(":", 2);
-            if (parts.length == 2) {
-                String label = parts[0].trim();
-                String value = parts[1].trim();
-
-                if (!isCoreField(label)) {
-                    PatentAdditionalField additionalField = new PatentAdditionalField(patent, label, value);
-                    patentService.saveAdditionalFields(additionalField);
-                }
-            }
-        }
-    }
-
     private boolean isCoreField(String label) {
         return List.of("Название", "Номер заявки", "Дата подачи заявки", "Дата регистрации", "Срок действия", "Автор(-ы)", "Патентообладатель",
-                "№ охранного документа", "№ регистрации", "Статус", "МПК", "МКПО", "Номер бюллетеня", "Дата бюллетеня", "Владелец", "Наименование сорта, породы").contains(label);
+                "№ охранного документа", "№ регистрации", "Статус", "МПК", "МКПО", "МКТУ", "Номер бюллетеня", "Дата бюллетеня", "Владелец", "Наименование сорта, породы").contains(label);
     }
 
     private String getFieldValue(String text, String regex) {

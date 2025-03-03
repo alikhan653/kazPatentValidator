@@ -44,7 +44,7 @@ public class EbulletinPatentParser implements PatentParser {
     }
 
     @Override
-    public List<Patent> parseAll() {
+    public List<Patent> parseAll(String from, boolean both) {
         List<Patent> patents = new ArrayList<>();
         ChromeOptions options = new ChromeOptions();
         options.addArguments("--disable-dev-shm-usage");
@@ -60,18 +60,26 @@ public class EbulletinPatentParser implements PatentParser {
 
             WebElement contentDiv = wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector(".content-m.content-default")));
 
-            // Extract all <h1><a> elements inside the div
             List<WebElement> links = contentDiv.findElements(By.tagName("a"));
+            List<String> yearLinks = new ArrayList<>();
 
             for (WebElement link : links) {
                 String href = link.getAttribute("href");
                 Matcher matcher = YEAR_PATTERN.matcher(href);
 
                 if (matcher.find()) {
-                    int year = Integer.parseInt(matcher.group(1));
-                    logger.info("Processing year: " + year);
-                    processYear(year, href, driver, wait);
+                    yearLinks.add(href);
                 }
+            }
+
+            for (String yearLink : yearLinks) {
+                driver.get(yearLink);
+                logger.info("Opened Ebulletin year page: " + yearLink);
+
+                parseFromYear(wait, driver);
+
+                driver.navigate().back(); // Возвращаемся обратно к списку годов
+                logger.info("Returned to the year list page.");
             }
 
         } catch (Exception e) {
@@ -101,7 +109,6 @@ public class EbulletinPatentParser implements PatentParser {
         List<WebElement> contentRows;
 
         try {
-            // Keep re-locating contentRows to avoid stale references
             contentRows = wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.className("content-row")));
 
             for (int i = 0; i < contentRows.size(); i++) {
@@ -110,19 +117,19 @@ public class EbulletinPatentParser implements PatentParser {
 
                 while (!success && retryCount < 3) { // Retry logic for stale elements
                     try {
-                        // Re-locate the contentRows to avoid StaleElementException
+                        // Re-locate contentRows to avoid StaleElementException
                         contentRows = wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.className("content-row")));
                         WebElement row = contentRows.get(i);
 
-                        WebElement dateElement = wait.until(ExpectedConditions.refreshed(
-                                ExpectedConditions.presenceOfElementLocated(By.cssSelector("div.pdf-content.align-center"))
-                        ));
+                        WebElement dateElement = row.findElement(By.cssSelector("div.pdf-content.align-center"));
                         String date = dateElement.getText().substring(1, 11);
                         logger.info("Processing date: {} (Starting from page: {})", date, page);
 
-                        boolean foundData = false;
+                        boolean foundDataOnAnyPage = false;
 
-                        while (!foundData) { // Loop until data is found
+                        while (true) { // Keep fetching pages until no data is found on a page
+                            boolean foundDataThisPage = false;
+
                             for (Map.Entry<String, String> entry : getCategories().entrySet()) {
                                 String category = entry.getKey();
                                 String categoryValue = entry.getValue();
@@ -138,7 +145,8 @@ public class EbulletinPatentParser implements PatentParser {
                                     if (patents != null && !patents.isEmpty()) {
                                         logger.info("Fetched {} patents for category: {} on page: {}", patents.size(), category, page);
                                         savePatentData(patents);
-                                        foundData = true; // Mark as found
+                                        foundDataOnAnyPage = true; // At least one page had data for this date
+                                        foundDataThisPage = true; // Data was found on this specific page
                                     } else {
                                         logger.warn("No patents found for category: {} on date: {} (Page {})", category, date, page);
                                     }
@@ -151,13 +159,19 @@ public class EbulletinPatentParser implements PatentParser {
                                 }
                             }
 
-                            if (!foundData) {
-                                page++; // Move to the next page if no data is found in any category
+                            if (foundDataThisPage) {
+                                page++; // Move to next page if data was found
+                            } else {
+                                break; // No data on this page, stop searching for this date
                             }
                         }
 
-                        logger.info("Finalized page for date {}: {}", date, page);
+                        logger.info("Finished processing date: {} (Last processed page: {})", date, page);
                         success = true; // Mark as successfully processed
+
+                        if (!foundDataOnAnyPage) {
+                            logger.warn("No data found for entire date: {}. Moving to the next date.", date);
+                        }
 
                     } catch (StaleElementReferenceException e) {
                         logger.warn("Stale element encountered. Retrying... Attempt {}/3", retryCount + 1);
@@ -177,7 +191,7 @@ public class EbulletinPatentParser implements PatentParser {
 
     private void savePatentData(List<Patent> patents) {
         logger.info("Saving patents to database...");
-        patentService.savePatents(patents);
+        patentService.savePatents(patents, logger);
         logger.info("Saved {} patents to database.", patents.size());
 
         List<PatentAdditionalField> additionalFields = patents.stream()
@@ -232,6 +246,11 @@ public class EbulletinPatentParser implements PatentParser {
             additionalFields.add(new PatentAdditionalField(patent, "referat", dto.getDescription()));
         }
 
+        String patentImage = dto.getImageBase64();
+        if(patentImage != null && !patentImage.isEmpty()){
+            additionalFields.add(new PatentAdditionalField(patent, "image_base64", patentImage));
+        }
+
         patent.setAdditionalFields(additionalFields);
         return patent;
     }
@@ -250,4 +269,8 @@ public class EbulletinPatentParser implements PatentParser {
         return new ArrayList<>();
     }
 
+    @Override
+    public List<Patent> parseFrom(String category, String from, boolean both) {
+        return null;
+    }
 }

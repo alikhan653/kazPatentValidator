@@ -13,7 +13,6 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString
 public class Patent {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,7 +26,7 @@ public class Patent {
     private LocalDate registrationDate;
     private LocalDate expirationDate;
     private LocalDate bulletinDate;
-    @Column(length = 1000)
+    @Column(columnDefinition = "TEXT")
     private String title;
     @Column(length = 1000)
     private String name;
@@ -47,6 +46,7 @@ public class Patent {
     @Column(length = 50)
     private String category;
     private String patentSite;
+    private String imageUrl;
 
     @OneToMany(mappedBy = "patent", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PatentAdditionalField> additionalFields;
@@ -59,6 +59,17 @@ public class Patent {
         this.bulletinNumber = bulletinNumber;
         this.bulletinDate = bulletinDate;
         this.category = category;
+    }
+
+    @Override
+    public String toString() {
+        return "Patent{id=" + id +
+                ", title='" + title + '\'' +
+                ", category='" + category + '\'' +
+                ", filingDate=" + filingDate +
+                ", securityDocNumber='" + securityDocNumber + '\'' +
+                ", additionalFields=" + (additionalFields != null ? additionalFields.size() : "null") +
+                '}';
     }
 }
 

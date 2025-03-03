@@ -3,6 +3,8 @@ package kz.it.patentparser.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
+import java.util.stream.Collectors;
+
 @Data
 public class PatentDto {
 
@@ -26,7 +28,8 @@ public class PatentDto {
 
     @JsonProperty("gos_number_11")
     private String securityDocNumber;
-
+    @JsonProperty("gos_date_11")
+    private String securityDocDate;
     @JsonProperty("icp_51")
     private String ipcCodes;
 
@@ -41,22 +44,8 @@ public class PatentDto {
 
     @JsonProperty("dvidod")
     private String additionalInfo1;
-
-    @JsonProperty("field_31")
-    private String field31;
-
-    @JsonProperty("field_32")
-    private String field32;
-
-    @JsonProperty("field_33")
-    private String field33;
-
     @JsonProperty("date_85")
     private String date85;
-
-    @JsonProperty("field_86")
-    private String field86;
-
     @JsonProperty("author_72_kz")
     private String authorsKz;
 
@@ -83,4 +72,31 @@ public class PatentDto {
 
     @JsonProperty("ref_57")
     private String description;
+    @JsonProperty("field_31")
+    private String field31;
+    @JsonProperty("field_32")
+    private String field32;
+    @JsonProperty("field_33")
+    private String field33;
+    @JsonProperty("field_86")
+    private String field86;
+    @JsonProperty("field_181")
+    private String field181;
+    @JsonProperty("field_510_511_short")
+    private String field510511Short;
+    @JsonProperty("field_510_511")
+    private String field510511;
+    @JsonProperty("field_526_ru")
+    private String field526Ru;
+    @JsonProperty("field_526_kz")
+    private String field526Kz;
+    @JsonProperty("field_591")
+    private String field591;
+    @JsonProperty("field_730_ru")
+    private String field730Ru;
+    @JsonProperty("field_730_kz")
+    private String field730Kz;
+
+    private String imageBase64;
+    private String category;
 }

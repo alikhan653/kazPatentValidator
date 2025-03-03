@@ -9,7 +9,6 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString
 public class PatentAdditionalField {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,6 +27,13 @@ public class PatentAdditionalField {
         this.label = label;
         this.value = value;
     }
-
+    @Override
+    public String toString() {
+        return "PatentAdditionalField{id=" + id +
+                ", label='" + label + '\'' +
+                ", value='" + value + '\'' +
+                ", patentId=" + (patent != null ? patent.getId() : "null") +
+                '}';
+    }
     // Getters and setters
 }

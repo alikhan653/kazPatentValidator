@@ -4,7 +4,6 @@ import kz.it.patentparser.model.Patent;
 import kz.it.patentparser.model.PatentAdditionalField;
 import kz.it.patentparser.repository.PatentAdditionalFieldRepository;
 import kz.it.patentparser.repository.PatentRepository;
-import kz.it.patentparser.service.PatentParserService;
 import kz.it.patentparser.service.PatentService;
 import kz.it.patentparser.validator.PatentValidator;
 import org.openqa.selenium.*;
@@ -27,6 +26,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public interface PatentParser {
-    List<Patent> parseAll();
+    List<Patent> parseAll(String from, boolean both);
     List<Patent> parseCategory(String category);
+    List<Patent> parseFrom(String category, String from, boolean both);
 }
