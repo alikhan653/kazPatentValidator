@@ -33,27 +33,25 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Google Chrome
-RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - \
-    && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | tee /etc/apt/sources.list.d/google-chrome.list \
-    && apt-get update \
-    && apt-get install -y google-chrome-stable
+RUN wget -q -O /tmp/chrome-linux64.zip https://storage.googleapis.com/chrome-for-testing-public/133.0.6943.141/linux64/chrome-linux64.zip \
+    && unzip /tmp/chrome-linux64.zip -d /usr/local/ \
+    && ln -s /usr/local/chrome-linux64/chrome /usr/bin/google-chrome \
+    && rm /tmp/chrome-linux64.zip
 
-# Install ChromeDriver (Get the correct version)
-RUN CHROME_VERSION=$(google-chrome --version | awk '{print $3}' | cut -d '.' -f 1) \
-    && CHROME_DRIVER_VERSION=$(curl -sS https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION) \
-    && wget -q -O /tmp/chromedriver.zip https://chromedriver.storage.googleapis.com/${CHROME_DRIVER_VERSION}/chromedriver_linux64.zip \
-    && unzip /tmp/chromedriver.zip -d /usr/local/bin/ \
+# Install ChromeDriver 133.0.6943.141
+RUN wget -q -O /tmp/chromedriver-linux64.zip https://storage.googleapis.com/chrome-for-testing-public/133.0.6943.141/linux64/chromedriver-linux64.zip \
+    && unzip /tmp/chromedriver-linux64.zip -d /usr/local/bin/ \
     && chmod +x /usr/local/bin/chromedriver \
-    && rm /tmp/chromedriver.zip
+    && rm /tmp/chromedriver-linux64.zip
+
+# Set environment variable for ChromeDriver path
+ENV CHROMEDRIVER_PATH=/usr/local/bin/chromedriver
 
 # Copy built JAR file from the build stage
 COPY --from=build /app/build/libs/*.jar app.jar
 
 # Expose application port
 EXPOSE 8080
-
-# Set environment variable for ChromeDriver path
-ENV CHROMEDRIVER_PATH=/usr/local/bin/chromedriver
 
 # Run the application
 CMD ["java", "-jar", "app.jar"]
