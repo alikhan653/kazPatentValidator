@@ -1,13 +1,35 @@
-# Use OpenJDK base image for building
+# Use OpenJDK base image
 FROM openjdk:17-jdk as build
 
-# Set working directory
+# Set environment variables
+ENV JAVA_HOME=/usr/local/openjdk-17
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+ENV CERT_ALIAS=gosreestr
+ENV CERT_PATH=/usr/local/share/ca-certificates/_.kazpatent.kz.crt
+ENV CACERTS_PATH=$JAVA_HOME/lib/security/cacerts
+ENV STOREPASS=changeit
+
+# Copy the certificate into the container
+COPY _.kazpatent.kz.crt $CERT_PATH
+
+# Import the certificate into the Java Keystore
+RUN keytool -import -trustcacerts -keystore $CACERTS_PATH -storepass $STOREPASS -noprompt -alias $CERT_ALIAS -file $CERT_PATH
+
+# Verify that the certificate was added
+RUN keytool -list -keystore $CACERTS_PATH -storepass $STOREPASS | grep $CERT_ALIAS
+
+# Set the working directory
 WORKDIR /app
 
 # Copy Gradle wrapper and build files
 COPY gradlew gradlew
 COPY gradle gradle
 COPY build.gradle settings.gradle ./
+
+# Install xargs and other necessary utilities
+RUN apt-get update && apt-get install -y \
+    findutils \
+    && rm -rf /var/lib/apt/lists/*
 
 # Give execution permission to Gradle wrapper
 RUN chmod +x gradlew
@@ -18,16 +40,8 @@ COPY src src
 # Build the application
 RUN ./gradlew clean bootJar
 
-# Use a minimal JRE image for production
+# Use a minimal JDK image for production
 FROM eclipse-temurin:17-jre
-
-# Set environment variables
-ENV JAVA_HOME=/opt/java/openjdk
-ENV PATH="${JAVA_HOME}/bin:${PATH}"
-ENV CERT_ALIAS=gosreestr
-ENV CERT_PATH=/usr/local/share/ca-certificates/_.kazpatent.kz.crt
-ENV CACERTS_PATH=/etc/ssl/certs/java/cacerts
-ENV STOREPASS=changeit
 
 # Set working directory
 WORKDIR /app
