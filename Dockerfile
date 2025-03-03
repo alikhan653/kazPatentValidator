@@ -1,7 +1,7 @@
-# Use official OpenJDK 17 as base image
-FROM eclipse-temurin:17-jdk as build
+# Use OpenJDK base image for building
+FROM openjdk:17-jdk as build
 
-# Set the working directory
+# Set working directory
 WORKDIR /app
 
 # Copy Gradle wrapper and build files
@@ -18,8 +18,16 @@ COPY src src
 # Build the application
 RUN ./gradlew clean bootJar
 
-# Use a minimal JDK image for production
+# Use a minimal JRE image for production
 FROM eclipse-temurin:17-jre
+
+# Set environment variables
+ENV JAVA_HOME=/opt/java/openjdk
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+ENV CERT_ALIAS=gosreestr
+ENV CERT_PATH=/usr/local/share/ca-certificates/_.kazpatent.kz.crt
+ENV CACERTS_PATH=/etc/ssl/certs/java/cacerts
+ENV STOREPASS=changeit
 
 # Set working directory
 WORKDIR /app
@@ -27,7 +35,16 @@ WORKDIR /app
 # Copy built JAR file from the build stage
 COPY --from=build /app/build/libs/*.jar app.jar
 
-# Expose the application port (adjust if needed)
+# Copy the certificate into the container
+COPY _.kazpatent.kz.crt $CERT_PATH
+
+# Import the certificate into the Java Keystore
+RUN keytool -import -trustcacerts -keystore $CACERTS_PATH -storepass $STOREPASS -noprompt -alias $CERT_ALIAS -file $CERT_PATH
+
+# Verify that the certificate was added
+RUN keytool -list -keystore $CACERTS_PATH -storepass $STOREPASS | grep $CERT_ALIAS
+
+# Expose the application port
 EXPOSE 8080
 
 # Run the application
