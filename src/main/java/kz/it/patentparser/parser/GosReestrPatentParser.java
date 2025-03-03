@@ -66,7 +66,7 @@ public class GosReestrPatentParser implements PatentParser {
         ChromeOptions options = new ChromeOptions();
         options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--no-sandbox");
-//        options.addArguments("--headless");
+        options.addArguments("--headless");
         WebDriver webDriver = new ChromeDriver(options);
 
         try {
@@ -113,6 +113,7 @@ public class GosReestrPatentParser implements PatentParser {
         ChromeOptions options = new ChromeOptions();
         options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--no-sandbox");
+        options.addArguments("--headless");
 
         WebDriver webDriver = new ChromeDriver(options);
         try {
