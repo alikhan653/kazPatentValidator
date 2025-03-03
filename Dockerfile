@@ -1,22 +1,14 @@
-# Use OpenJDK base image
+# Use OpenJDK base image for the build stage
 FROM openjdk:17-jdk as build
 
 # Set environment variables
-ENV JAVA_HOME=/usr/local/openjdk-17
-ENV PATH="${JAVA_HOME}/bin:${PATH}"
-ENV CERT_ALIAS=gosreestr
-ENV CERT_PATH=/usr/local/share/ca-certificates/_.kazpatent.kz.crt
-ENV CACERTS_PATH=$JAVA_HOME/lib/security/cacerts
-ENV STOREPASS=changeit
+ENV CERT_PATH=/usr/local/share/ca-certificates/
 
 # Copy the certificate into the container
 COPY _.kazpatent.kz.crt $CERT_PATH
 
-# Import the certificate into the Java Keystore
-RUN keytool -import -trustcacerts -keystore $CACERTS_PATH -storepass $STOREPASS -noprompt -alias $CERT_ALIAS -file $CERT_PATH
-
-# Verify that the certificate was added
-RUN keytool -list -keystore $CACERTS_PATH -storepass $STOREPASS | grep $CERT_ALIAS
+# Update the CA certificates
+RUN update-ca-certificates
 
 # Set the working directory
 WORKDIR /app
@@ -26,7 +18,7 @@ COPY gradlew gradlew
 COPY gradle gradle
 COPY build.gradle settings.gradle ./
 
-# Install xargs and other necessary utilities
+# Install necessary utilities and Gradle dependencies
 RUN apt-get update && apt-get install -y \
     findutils \
     && rm -rf /var/lib/apt/lists/*
@@ -37,34 +29,23 @@ RUN chmod +x gradlew
 # Copy the source code
 COPY src src
 
-# Build the application
+# Build the application (create the JAR)
 RUN ./gradlew clean bootJar
 
-# Use a minimal JDK image for production
+# Use a minimal JDK image for the production stage
 FROM eclipse-temurin:17-jre
 
-# Set working directory
+# Set the working directory
 WORKDIR /app
 
 # Copy built JAR file from the build stage
 COPY --from=build /app/build/libs/*.jar app.jar
 
-# Copy the certificate into the container
+# Copy the certificate into the production container and update CA certificates
 COPY _.kazpatent.kz.crt $CERT_PATH
+RUN update-ca-certificates
 
-# Import the certificate into the Java Keystore
-RUN keytool -import -trustcacerts -keystore $CACERTS_PATH -storepass $STOREPASS -noprompt -alias $CERT_ALIAS -file $CERT_PATH
-
-# Verify that the certificate was added
-RUN keytool -list -keystore $CACERTS_PATH -storepass $STOREPASS | grep $CERT_ALIAS
-
-# Expose the application port
-EXPOSE 8080
-
-# Run the application
-CMD ["java", "-jar", "app.jar"]
-
-# Install dependencies
+# Install required dependencies (e.g., wget, curl, unzip, gnupg)
 RUN apt-get update && apt-get install -y \
     wget \
     curl \
@@ -85,3 +66,8 @@ RUN wget -q -O /tmp/chromedriver.zip https://storage.googleapis.com/chrome-for-t
     chmod +x /usr/local/bin/chromedriver && \
     rm -rf /tmp/chromedriver.zip /usr/local/bin/chromedriver-linux64
 
+# Expose the application port
+EXPOSE 8080
+
+# Run the application
+CMD ["java", "-jar", "app.jar"]
