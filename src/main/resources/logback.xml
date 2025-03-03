@@ -78,7 +78,7 @@
     </appender>
 
     <!-- Глобальный логгер (все логи) -->
-    <root level="INFO">
+    <root level="DEBUG">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="ALL_FILE"/>
     </root>
@@ -86,14 +86,17 @@
     <!-- Общие настройки логирования -->
     <logger name="kz.it.patentparser.parser.EbulletinPatentParser" level="DEBUG" additivity="false">
         <appender-ref ref="EBULLETIN"/>
+        <appender-ref ref="CONSOLE"/>
     </logger>
 
     <logger name="kz.it.patentparser.parser.GosReestrPatentParser" level="INFO" additivity="false">
         <appender-ref ref="GOSREESTR"/>
+        <appender-ref ref="CONSOLE"/>
     </logger>
 
     <logger name="kz.it.patentparser.service.PatentCheckerService" level="INFO" additivity="false">
         <appender-ref ref="CHECKER"/>
+        <appender-ref ref="CONSOLE"/>
     </logger>
 
 
@@ -105,6 +108,7 @@
     <!-- Логгер для PatentParserService -->
     <logger name="kz.it.kazpatentparser.service.PatentParserService" level="DEBUG" additivity="false">
         <appender-ref ref="PATENT_PARSER_FILE"/>
+        <appender-ref ref="CONSOLE"/>
     </logger>
 
 
