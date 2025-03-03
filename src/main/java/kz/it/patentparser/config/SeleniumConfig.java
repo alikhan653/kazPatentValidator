@@ -16,7 +16,7 @@ public class SeleniumConfig {
     @Bean
     public WebDriver webDriver() {
         if (webDriver == null) {
-            System.setProperty("webdriver.chrome.driver", "C:\\Users\\user\\Downloads\\chromedriver-win64\\chromedriver.exe");
+            System.setProperty("webdriver.chrome.driver", System.getenv("CHROMEDRIVER_PATH"));
             // WebDriverManager.chromedriver().setup(); // Use this if you prefer auto-management
 
             ChromeOptions options = new ChromeOptions();

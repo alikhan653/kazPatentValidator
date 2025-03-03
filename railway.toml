@@ -1,0 +1,7 @@
+[build]
+cmds = [
+    "apt update && apt install -y google-chrome-stable",
+    "wget -O /usr/local/bin/chromedriver https://storage.googleapis.com/chrome-for-testing-public/122.0.6261.95/linux64/chromedriver-linux64.zip",
+    "unzip /usr/local/bin/chromedriver -d /usr/local/bin/",
+    "chmod +x /usr/local/bin/chromedriver"
+]
