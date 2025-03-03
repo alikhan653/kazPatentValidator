@@ -1,5 +1,14 @@
 # Use a lightweight OpenJDK 17 image
-FROM openjdk:17-slim
+FROM eclipse-temurin:17-jdk AS build
+WORKDIR /app
+COPY . .
+RUN ./gradlew bootJar
+
+FROM eclipse-temurin:17-jre
+WORKDIR /app
+COPY --from=build /app/build/libs/*.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
@@ -24,15 +33,3 @@ RUN CHROME_DRIVER_VERSION=$(curl -sS chromedriver.storage.googleapis.com/LATEST_
     && unzip /tmp/chromedriver.zip -d /usr/local/bin/ \
     && chmod +x /usr/local/bin/chromedriver \
     && rm /tmp/chromedriver.zip
-
-# Create app directory
-WORKDIR /app
-
-# Copy JAR file into the container
-COPY build/libs/*.jar app.jar
-
-# Expose the application port
-EXPOSE 8080
-
-# Run the application
-ENTRYPOINT ["java", "-jar", "app.jar"]
