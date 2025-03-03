@@ -47,16 +47,18 @@ public class GosReestrPatentParser implements PatentParser {
     private final PatentValidator validator;
     private final PatentService patentService;
     private final ImageService imageService;
+    private final WebDriver webDriver;
 
 
     private final PatentStorageService patentStorageService;
 
     @Autowired
-    public GosReestrPatentParser(PatentService patentService, PatentValidator validator, PatentStorageService patentStorageService, ImageService imageService) {
+    public GosReestrPatentParser(PatentService patentService, PatentValidator validator, PatentStorageService patentStorageService, ImageService imageService, WebDriver webDriver) {
         this.patentService = patentService;
         this.validator = validator;
         this.patentStorageService = patentStorageService;
         this.imageService = imageService;
+        this.webDriver = webDriver;
     }
 
     @Override
@@ -67,7 +69,6 @@ public class GosReestrPatentParser implements PatentParser {
         options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--no-sandbox");
 //        options.addArguments("--headless");
-        WebDriver webDriver = new ChromeDriver(options);
 
         try {
             WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(20));
@@ -109,7 +110,7 @@ public class GosReestrPatentParser implements PatentParser {
     @Override
     public List<Patent> parseFrom(String category, String from, boolean both) {
         List<Patent> patents = new ArrayList<>();
-        System.setProperty("webdriver.chrome.driver", System.getenv("CHROMEDRIVER_PATH"));
+//        System.setProperty("webdriver.chrome.driver", System.getenv("CHROMEDRIVER_PATH"));
         ChromeOptions options = new ChromeOptions();
         options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--no-sandbox");
