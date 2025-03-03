@@ -41,14 +41,13 @@ RUN apt-get update && apt-get install -y \
     gnupg \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Google Chrome
-RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - \
-    && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | tee /etc/apt/sources.list.d/google-chrome.list \
-    && apt-get update \
-    && apt-get install -y google-chrome-stable
+# Install Chrome
+RUN wget -q -O /tmp/chrome-linux.zip https://storage.googleapis.com/chrome-for-testing-public/133.0.6943.141/linux64/chrome-linux64.zip \
+    && unzip /tmp/chrome-linux.zip -d /opt/google/chrome/ \
+    && rm /tmp/chrome-linux.zip
 
 # Install ChromeDriver
-RUN wget -q -O /tmp/chromedriver.zip https://storage.googleapis.com/chrome-for-testing-public/133.0.6943.141/linux64/chrome-linux64.zip \
+RUN wget -q -O /tmp/chromedriver.zip https://storage.googleapis.com/chrome-for-testing-public/133.0.6943.141/chromedriver-linux64.zip \
     && unzip /tmp/chromedriver.zip -d /usr/local/bin/ \
     && chmod +x /usr/local/bin/chromedriver \
     && rm /tmp/chromedriver.zip
