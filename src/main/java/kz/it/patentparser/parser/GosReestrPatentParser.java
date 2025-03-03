@@ -64,7 +64,7 @@ public class GosReestrPatentParser implements PatentParser {
     @Override
     public List<Patent> parseAll(String from, boolean both) {
         List<Patent> patents = new ArrayList<>();
-        System.setProperty("webdriver.chrome.driver", System.getenv("CHROMEDRIVER_PATH"));
+//        System.setProperty("webdriver.chrome.driver", System.getenv("CHROMEDRIVER_PATH"));
         ChromeOptions options = new ChromeOptions();
         options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--no-sandbox");
