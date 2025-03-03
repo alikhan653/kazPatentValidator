@@ -48,8 +48,6 @@ public class GosReestrPatentParser implements PatentParser {
     private final PatentService patentService;
     private final ImageService imageService;
 
-
-
     private final PatentStorageService patentStorageService;
 
     @Autowired
