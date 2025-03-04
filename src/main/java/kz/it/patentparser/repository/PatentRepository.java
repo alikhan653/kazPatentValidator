@@ -21,8 +21,8 @@ public interface PatentRepository extends JpaRepository<Patent, Long>, JpaSpecif
             "(LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) " +
             "OR LOWER(p.title) LIKE LOWER(CONCAT('%', :transliteratedQuery1, '%')) " +
             "OR LOWER(p.title) LIKE LOWER(CONCAT('%', :transliteratedQuery2, '%'))) " +
-            "AND (p.expirationDate IS NULL OR (p.expirationDate >= :startDate " +
-            "AND p.expirationDate <= :endDate)) " +
+            "AND (p.expirationDate >= :startDate " +
+            "AND p.expirationDate <= :endDate) " +
             "AND ((COALESCE(:siteType, '') = '') OR p.patentSite = :siteType) " +
             "AND (:expired IS NULL OR (:expired = TRUE AND (p.registrationDate <= :todayMinus10Years)) " +
             "OR  (:expired = FALSE AND (p.registrationDate > :todayMinus10Years))) " +
