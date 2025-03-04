@@ -1,5 +1,5 @@
 # Use OpenJDK base image for the build stage
-FROM openjdk:17 as build
+FROM openjdk:17-jdk-slim as build
 
 # Set environment variables
 ENV CERT_PATH=/usr/local/share/ca-certificates/
@@ -36,7 +36,7 @@ COPY src src
 RUN ./gradlew clean bootJar
 
 # Use a minimal JDK image for the production stage
-FROM openjdk:17-jre-slim
+FROM openjdk:17-jdk-slim
 
 # Set the working directory
 WORKDIR /app
