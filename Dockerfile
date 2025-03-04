@@ -1,11 +1,11 @@
 # Use OpenJDK base image for the build stage
-FROM openjdk:17-jdk as build
+FROM openjdk:17 as build
 
 # Set environment variables
 ENV CERT_PATH=/usr/local/share/ca-certificates/
 
 # Install necessary tools including apt package manager
-RUN apt-get update && apt-get install -y apt-utils ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Copy the certificate into the container
 COPY _.kazpatent.kz.crt $CERT_PATH
@@ -36,7 +36,7 @@ COPY src src
 RUN ./gradlew clean bootJar
 
 # Use a minimal JDK image for the production stage
-FROM eclipse-temurin:17-jre
+FROM openjdk:17-jre-slim
 
 # Set the working directory
 WORKDIR /app
