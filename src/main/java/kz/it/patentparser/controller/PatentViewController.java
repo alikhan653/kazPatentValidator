@@ -77,7 +77,7 @@ public class PatentViewController {
                             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
                             @RequestParam(required = false) String siteType,
                             @RequestParam(required = false) Boolean expired,
-                            @RequestParam(required = false) String category, Model model) throws IOException {
+                            @RequestParam(defaultValue = "0") String category, Model model) throws IOException {
 
         List<Patent> patents = new ArrayList<>();
         if (query.isEmpty() && startDate == null && endDate == null && siteType == null && expired == null && category.equals("0")) {
