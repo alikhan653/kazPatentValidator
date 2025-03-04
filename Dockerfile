@@ -1,5 +1,5 @@
 # Используем официальный образ OpenJDK 17
-FROM openjdk:17-jdk-slim
+FROM openjdk:17-jdk-slim AS build
 
 # Устанавливаем ca-certificates (если не установлены)
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
