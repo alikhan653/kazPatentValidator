@@ -531,7 +531,7 @@ public class GosReestrPatentParser implements PatentParser {
         while (attempts > 0) {
             try {
                 // Load the certificate
-                String certificatePath = "/app/_.kazpatent.kz.cert"; // Modify the path as needed
+                String certificatePath = "./_.kazpatent.kz.cert"; // Modify the path as needed
                 FileInputStream fis = new FileInputStream(certificatePath);
                 CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
                 X509Certificate cert = (X509Certificate) certificateFactory.generateCertificate(fis);
