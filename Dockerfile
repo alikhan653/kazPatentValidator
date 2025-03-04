@@ -46,7 +46,7 @@ RUN ./gradlew clean bootJar
 FROM openjdk:17-jdk-slim
 
 # Set environment variables again in the production image
-ENV JAVA_CACERTS_PATH=/usr/lib/jvm/java-17-openjdk/lib/security/cacerts
+ENV JAVA_CACERTS_PATH=/usr/local/openjdk-17/lib/security/cacerts
 ENV CERT_ALIAS=kazpatent_cert
 ENV CERT_PASSWORD=changeit
 
