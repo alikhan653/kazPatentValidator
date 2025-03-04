@@ -1,21 +1,27 @@
-# Use OpenJDK base image for the build stage
+# Use OpenJDK base image
 FROM openjdk:17-jdk-slim as build
 
 # Set environment variables
-ENV CERT_PATH=/usr/local/share/ca-certificates/
+ENV CERT_PATH=/usr/local/share/ca-certificates
 ENV JAVA_CACERTS_PATH=/usr/local/openjdk-17/lib/security/cacerts
 ENV CERT_ALIAS=kazpatent_cert
 ENV CERT_PASSWORD=changeit
 
-# Install necessary tools including ca-certificates
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+# Install required dependencies
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy the certificate into the container
-COPY _.kazpatent.kz.crt $CERT_PATH
+COPY _.kazpatent.kz.crt $CERT_PATH/_.kazpatent.kz.crt
 
-RUN test -f $JAVA_CACERTS_PATH && echo "Keystore exists" || echo "Keystore NOT found!"
+# Debug: Check if the certificate exists
+RUN ls -l $CERT_PATH && cat $CERT_PATH/_.kazpatent.kz.crt
 
-# Import certificate into Java keystore (Corrected Path)
+# Ensure Java keystore exists before importing
+RUN test -f $JAVA_CACERTS_PATH && echo "Keystore exists" || (echo "Keystore NOT found!" && exit 1)
+
+# Import certificate into Java keystore
 RUN keytool -import -trustcacerts -keystore $JAVA_CACERTS_PATH -storepass $CERT_PASSWORD -noprompt -alias $CERT_ALIAS -file $CERT_PATH/_.kazpatent.kz.crt
 
 # Set the working directory
