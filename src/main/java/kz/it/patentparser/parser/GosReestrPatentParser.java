@@ -22,8 +22,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509TrustManager;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
+import java.security.KeyStore;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -523,6 +530,31 @@ public class GosReestrPatentParser implements PatentParser {
         int attempts = 3;
         while (attempts > 0) {
             try {
+                // Load the certificate
+                String certificatePath = "path/to/your/certificate.crt"; // Modify the path as needed
+                FileInputStream fis = new FileInputStream(certificatePath);
+                CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
+                X509Certificate cert = (X509Certificate) certificateFactory.generateCertificate(fis);
+                fis.close();
+
+                // Initialize a KeyStore with the certificate
+                KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
+                keystore.load(null, null);  // Initialize an empty keystore
+                keystore.setCertificateEntry("cert", cert);
+
+                // Initialize TrustManager with the custom keystore
+                TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+                trustManagerFactory.init(keystore);
+                X509TrustManager trustManager = (X509TrustManager) trustManagerFactory.getTrustManagers()[0];
+
+                // Create the SSLContext
+                SSLContext sslContext = SSLContext.getInstance("TLS");
+                sslContext.init(null, new javax.net.ssl.TrustManager[]{trustManager}, new java.security.SecureRandom());
+
+                // Set the default SSLContext
+                SSLContext.setDefault(sslContext);
+
+                // Perform the Jsoup connection with the custom SSL context
                 Document doc = Jsoup.connect(url)
                         .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
                         .timeout(30_000)
@@ -535,11 +567,9 @@ public class GosReestrPatentParser implements PatentParser {
                 List<PatentAdditionalField> additionalFields = new ArrayList<>();
 
                 Elements fields = doc.select("div.detial_plan_info ul li"); // Select all list items
-
                 for (Element field : fields) {
                     String rawLabel = field.select("strong").text().trim();
                     String value = field.select("span").text().trim();
-
 
                     // Remove context starting with ( and ending )
                     String label = rawLabel.replaceAll("\\(.*\\)", "").trim();
@@ -583,12 +613,18 @@ public class GosReestrPatentParser implements PatentParser {
                 } else {
                     logger.error("HTTP error: " + e.getStatusCode());
                 }
-            } catch (IOException e) {
+            }
+            catch (IOException e) {
                 int docNumber = Integer.parseInt(url.substring(url.lastIndexOf("=") + 1));
                 patentStorageService.saveDocNumber(category, docNumber);
                 logger.error("Error fetching patent details: {}", e.getMessage());
                 logger.info("Saving docNumber: {}", docNumber);
                 return null;
+            }
+            catch (Exception e) {
+                logger.error("Error fetching patent details: {}", e.getMessage());
+                attempts--;
+                Thread.sleep(3000);
             }
         }
         return null;
