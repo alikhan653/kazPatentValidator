@@ -26,7 +26,12 @@ public interface PatentRepository extends JpaRepository<Patent, Long>, JpaSpecif
             "AND ((COALESCE(:siteType, '') = '') OR p.patentSite = :siteType) " +
             "AND (:expired IS NULL OR (:expired = TRUE AND (p.registrationDate <= :todayMinus10Years)) " +
             "OR  (:expired = FALSE AND (p.registrationDate > :todayMinus10Years))) " +
-            "AND ((COALESCE(:category, '') = '') OR p.category = :category)")
+            "AND ((COALESCE(:category, '') = '') OR p.category = :category)" +
+            "ORDER BY " +
+            "CASE WHEN p.expirationDate IS NULL THEN 1 ELSE 0 END, " + // Push NULLs to the end
+            "p.expirationDate DESC, " +
+            "p.id DESC" // Keep original sorting as secondary criteria
+    )
     Page<Patent> searchPatents(
             @Param("query") String query,
             @Param("transliteratedQuery1") String transliteratedQuery1,
