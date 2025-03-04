@@ -57,7 +57,7 @@ WORKDIR /app
 COPY --from=build /app/build/libs/*.jar app.jar
 
 # Copy the certificate into the production container and update CA certificates
-COPY _.kazpatent.kz.crt $CERT_PATH
+COPY kazpatent.crt $CERT_PATH/$CERT_FILE
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/* && update-ca-certificates
 
 # Import certificate into Java keystore in production (Corrected Path)
