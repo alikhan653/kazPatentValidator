@@ -3,7 +3,7 @@ FROM openjdk:17-jdk-slim as build
 
 # Set environment variables
 ENV CERT_PATH=/usr/local/share/ca-certificates/
-ENV JAVA_CACERTS_PATH=/usr/lib/jvm/java-17-openjdk/lib/security/cacerts
+ENV JAVA_CACERTS_PATH=/usr/local/openjdk-17/lib/security/cacerts
 ENV CERT_ALIAS=kazpatent_cert
 ENV CERT_PASSWORD=changeit
 
@@ -12,6 +12,8 @@ RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/
 
 # Copy the certificate into the container
 COPY _.kazpatent.kz.crt $CERT_PATH
+
+RUN test -f $JAVA_CACERTS_PATH && echo "Keystore exists" || echo "Keystore NOT found!"
 
 # Import certificate into Java keystore (Corrected Path)
 RUN keytool -import -trustcacerts -keystore $JAVA_CACERTS_PATH -storepass $CERT_PASSWORD -noprompt -alias $CERT_ALIAS -file $CERT_PATH/_.kazpatent.kz.crt
