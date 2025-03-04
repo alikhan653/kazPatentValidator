@@ -3,7 +3,7 @@ FROM openjdk:17-jdk-slim as build
 
 # Set environment variables
 ENV CERT_PATH=/usr/local/share/ca-certificates/
-ENV JAVA_CACERTS_PATH=/usr/lib/jvm/java-17-openjdk-amd64/lib/security/cacerts
+ENV JAVA_CACERTS_PATH=/etc/ssl/certs/java/cacerts
 ENV CERT_ALIAS=kazpatent_cert
 ENV CERT_PASSWORD=changeit
 
@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/
 # Copy the certificate into the container
 COPY _.kazpatent.kz.crt $CERT_PATH
 
-# Import certificate into Java keystore
+# Import certificate into Java keystore (Corrected Path)
 RUN keytool -import -trustcacerts -keystore $JAVA_CACERTS_PATH -storepass $CERT_PASSWORD -noprompt -alias $CERT_ALIAS -file $CERT_PATH/_.kazpatent.kz.crt
 
 # Set the working directory
@@ -42,7 +42,7 @@ RUN ./gradlew clean bootJar
 FROM openjdk:17-jdk-slim
 
 # Set environment variables again in the production image
-ENV JAVA_CACERTS_PATH=/usr/lib/jvm/java-17-openjdk-amd64/lib/security/cacerts
+ENV JAVA_CACERTS_PATH=/etc/ssl/certs/java/cacerts
 ENV CERT_ALIAS=kazpatent_cert
 ENV CERT_PASSWORD=changeit
 
@@ -56,7 +56,7 @@ COPY --from=build /app/build/libs/*.jar app.jar
 COPY _.kazpatent.kz.crt $CERT_PATH
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/* && update-ca-certificates
 
-# Import certificate into Java keystore in production
+# Import certificate into Java keystore in production (Corrected Path)
 RUN keytool -import -trustcacerts -keystore $JAVA_CACERTS_PATH -storepass $CERT_PASSWORD -noprompt -alias $CERT_ALIAS -file $CERT_PATH/_.kazpatent.kz.crt
 
 # Install required dependencies (e.g., wget, curl, unzip, gnupg)
