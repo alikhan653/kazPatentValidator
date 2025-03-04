@@ -3,7 +3,7 @@ FROM openjdk:17-jdk-slim as build
 
 # Set environment variables
 ENV CERT_PATH=/usr/local/share/ca-certificates/
-ENV JAVA_CACERTS_PATH=/etc/ssl/certs/java/cacerts
+ENV JAVA_CACERTS_PATH=/usr/lib/jvm/java-17-openjdk/lib/security/cacerts
 ENV CERT_ALIAS=kazpatent_cert
 ENV CERT_PASSWORD=changeit
 
@@ -42,7 +42,7 @@ RUN ./gradlew clean bootJar
 FROM openjdk:17-jdk-slim
 
 # Set environment variables again in the production image
-ENV JAVA_CACERTS_PATH=/etc/ssl/certs/java/cacerts
+ENV JAVA_CACERTS_PATH=/usr/lib/jvm/java-17-openjdk/lib/security/cacerts
 ENV CERT_ALIAS=kazpatent_cert
 ENV CERT_PASSWORD=changeit
 
@@ -74,14 +74,4 @@ RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add
     && apt-get install -y google-chrome-stable
 
 # Install ChromeDriver
-RUN wget -q -O /tmp/chromedriver.zip https://storage.googleapis.com/chrome-for-testing-public/133.0.6943.141/linux64/chromedriver-linux64.zip && \
-    unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
-    mv /usr/local/bin/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver && \
-    chmod +x /usr/local/bin/chromedriver && \
-    rm -rf /tmp/chromedriver.zip /usr/local/bin/chromedriver-linux64
-
-# Expose the application port
-EXPOSE 8080
-
-# Run the application
-CMD ["java", "-jar", "app.jar"]
+RUN wget -q -O /tmp/chromedriver.zip https://storage.googleapis.com/chrome-for-testing-public/133.0.6943.141/linux64/
