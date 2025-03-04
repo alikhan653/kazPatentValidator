@@ -61,7 +61,7 @@ COPY kazpatent.crt $CERT_PATH/$CERT_FILE
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/* && update-ca-certificates
 
 # Import certificate into Java keystore in production (Corrected Path)
-RUN keytool -import -trustcacerts -keystore $JAVA_CACERTS_PATH -storepass $CERT_PASSWORD -noprompt -alias $CERT_ALIAS -file $CERT_PATH/_.kazpatent.kz.crt
+RUN keytool -import -trustcacerts -keystore $JAVA_CACERTS_PATH -storepass $CERT_PASSWORD -noprompt -alias $CERT_ALIAS -file $CERT_PATH/kazpatent.crt
 
 # Install required dependencies (e.g., wget, curl, unzip, gnupg)
 RUN apt-get update && apt-get install -y \
