@@ -702,23 +702,23 @@ public class GosReestrPatentParser implements PatentParser {
         patent.setPatentSite("gosreestr.kazpatent.kz");
         patent.setCategory(category);
         // Extracting common fields
-        patent.setSecurityDocNumber(getFieldValue(cardText, "№ охранного документа:?"));
-        patent.setRegistrationNumber(getFieldValue(cardText, "№ регистрации:?"));
-        patent.setStatus(getFieldValue(cardText, "Статус:?"));
-        patent.setApplicationNumber(getFieldValue(cardText, "Номер заявки:?"));
-        patent.setFilingDate(getDateField(cardText, "Дата подачи заявки:?"));
-        patent.setRegistrationDate(getDateField(cardText, "Дата регистрации:?"));
-        patent.setExpirationDate(getDateField(cardText, "Срок действия:?"));
-        String title = fixMixedCharacters(getFieldValue(cardText, "Название:?|Наименование сорта, породы:?"));
+//        patent.setSecurityDocNumber(getFieldValue(cardText, "№ охранного документа:?"));
+//        patent.setRegistrationNumber(getFieldValue(cardText, "№ регистрации:?"));
+//        patent.setStatus(getFieldValue(cardText, "Статус:?"));
+//        patent.setApplicationNumber(getFieldValue(cardText, "Номер заявки:?"));
+//        patent.setFilingDate(getDateField(cardText, "Дата подачи заявки:?"));
+//        patent.setRegistrationDate(getDateField(cardText, "Дата регистрации:?"));
+//        patent.setExpirationDate(getDateField(cardText, "Срок действия:?"));
+        String title = fixMixedCharacters(getFieldValue(cardText, "Название:?"));
         patent.setTitle(title);
-        patent.setIpc(getFieldValue(cardText, "МПК:?"));
-        patent.setMkpo(getFieldValue(cardText, "МКПО:?|МКТУ:?"));
+//        patent.setIpc(getFieldValue(cardText, "МПК:?"));
+//        patent.setMkpo(getFieldValue(cardText, "МКПО:?|МКТУ:?"));
         patent.setBulletinNumber(getFieldValue(cardText, "Номер бюллетеня:?"));
         patent.setBulletinDate(getDateField(cardText, "Дата бюллетеня:?"));
         patent.setAuthors(getFieldValue(cardText, "Автор\\(-ы\\)?:?"));
         patent.setSortName(getFieldValue(cardText, "Наименование сорта, породы:?"));
-        patent.setPatentHolder(getFieldValue(cardText, "Патентообладатель:?"));
-        patent.setOwner(getFieldValue(cardText, "Владелец:?"));
+//        patent.setPatentHolder(getFieldValue(cardText, "Патентообладатель:?"));
+//        patent.setOwner(getFieldValue(cardText, "Владелец:?"));
 
         return patent;
     }
