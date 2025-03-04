@@ -4,6 +4,9 @@ FROM openjdk:17-jdk as build
 # Set environment variables
 ENV CERT_PATH=/usr/local/share/ca-certificates/
 
+# Install ca-certificates package to enable update-ca-certificates command
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+
 # Copy the certificate into the container
 COPY _.kazpatent.kz.crt $CERT_PATH
 
@@ -43,7 +46,7 @@ COPY --from=build /app/build/libs/*.jar app.jar
 
 # Copy the certificate into the production container and update CA certificates
 COPY _.kazpatent.kz.crt $CERT_PATH
-RUN update-ca-certificates
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/* && update-ca-certificates
 
 # Install required dependencies (e.g., wget, curl, unzip, gnupg)
 RUN apt-get update && apt-get install -y \
