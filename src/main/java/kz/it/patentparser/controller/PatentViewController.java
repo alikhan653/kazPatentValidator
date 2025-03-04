@@ -85,7 +85,7 @@ public class PatentViewController {
             patents = patentService.getPatents(1, 300000).getContent();
         } else {
             // Если есть параметры → выполняем поиск
-            patents = patentService.searchPatents(query, startDate, endDate, 1, 300000, siteType, expired, category).getContent();
+            patents = patentService.searchPatents(query, startDate, endDate, 1, 100000, siteType, expired, category).getContent();
         }
         patentService.exportToCsv(response, patents);
         model.addAttribute("patents", patents);
