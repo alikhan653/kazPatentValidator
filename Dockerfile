@@ -13,16 +13,16 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the certificate into the container
-COPY _.kazpatent.kz.crt $CERT_PATH/_.kazpatent.kz.crt
+COPY _.kazpatent.kz.crt $CERT_PATH/kazpatent.crt
 
-# Debug: Check if the certificate exists
-RUN ls -l $CERT_PATH && cat $CERT_PATH/_.kazpatent.kz.crt
+# Debugging: Check if the certificate exists
+RUN ls -l $CERT_PATH && cat $CERT_PATH/kazpatent.crt
 
 # Ensure Java keystore exists before importing
 RUN test -f $JAVA_CACERTS_PATH && echo "Keystore exists" || (echo "Keystore NOT found!" && exit 1)
 
 # Import certificate into Java keystore
-RUN keytool -import -trustcacerts -keystore $JAVA_CACERTS_PATH -storepass $CERT_PASSWORD -noprompt -alias $CERT_ALIAS -file $CERT_PATH/_.kazpatent.kz.crt
+RUN keytool -import -trustcacerts -keystore $JAVA_CACERTS_PATH -storepass $CERT_PASSWORD -noprompt -alias $CERT_ALIAS -file $CERT_PATH/kazpatent.crt
 
 # Set the working directory
 WORKDIR /app
