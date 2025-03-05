@@ -65,6 +65,12 @@
       <label for="endDate">Дата окончания</label>
       <input type="date" id="endDate" name="endDate" class="form-control">
     </div>
+    <div class="col-md-3">
+      <input type="text" id="securityDocNumber" name="securityDocNumber" class="form-control" placeholder="Doc Number">
+    </div>
+    <div class="col-md-3">
+      <input type="text" id="mktu" name="mktu" class="form-control" placeholder="MKTU">
+    </div>
 
 
     <div class="col-md-3">
@@ -121,11 +127,11 @@
 <!--    </th:block>-->
 
 
-    <th:block th:with="imageBase64=${#lists.size(patent.additionalFields.?[label == 'image_base64']) > 0 ? patent.additionalFields.?[label == 'image_base64'][0].value : ''}">
-      <th:block th:if="${not #strings.isEmpty(patent.imageUrl) or not #strings.isEmpty(imageBase64)}">
-        <img th:src="${not #strings.isEmpty(patent.imageUrl) ? patent.imageUrl : 'data:image/png;base64,' + imageBase64}" alt="Patent Image" />
-      </th:block>
-    </th:block>
+<!--    <th:block th:with="imageBase64=${#lists.size(patent.additionalFields.?[label == 'image_base64']) > 0 ? patent.additionalFields.?[label == 'image_base64'][0].value : ''}">-->
+<!--      <th:block th:if="${not #strings.isEmpty(patent.imageUrl) or not #strings.isEmpty(imageBase64)}">-->
+<!--        <img th:src="${not #strings.isEmpty(patent.imageUrl) ? patent.imageUrl : 'data:image/png;base64,' + imageBase64}" alt="Patent Image" />-->
+<!--      </th:block>-->
+<!--    </th:block>-->
 
 
 

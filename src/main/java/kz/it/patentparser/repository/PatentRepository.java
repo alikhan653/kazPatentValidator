@@ -17,20 +17,20 @@ import java.util.Optional;
 public interface PatentRepository extends JpaRepository<Patent, Long>, JpaSpecificationExecutor<Patent> {
     Optional<Patent> findByApplicationNumber(String applicationNumber);
     Optional<Patent> findBySecurityDocNumberAndCategory(String securityDocNumber, String category);
-    @Query("SELECT p FROM Patent p WHERE " +
+    @Query("SELECT p FROM Patent p " +
+            "LEFT JOIN PatentAdditionalField af1 ON p.id = af1.patent.id AND af1.label = 'Класс МКТУ' " +
+            "WHERE " +
             "(LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) " +
-            "OR LOWER(p.title) LIKE LOWER(CONCAT('%', :transliteratedQuery1, '%')) " +
-            "OR LOWER(p.title) LIKE LOWER(CONCAT('%', :transliteratedQuery2, '%'))) " +
-            "AND (p.expirationDate >= :startDate " +
-            "AND p.expirationDate <= :endDate) " +
+            "OR  ((COALESCE(:transliteratedQuery1, '') = '') OR LOWER(p.title) LIKE LOWER(CONCAT('%', :transliteratedQuery1, '%'))) " +
+            "OR ((COALESCE(:transliteratedQuery2, '') = '') OR LOWER(p.title) LIKE LOWER(CONCAT('%', :transliteratedQuery2, '%')))) " +
+            "AND ((p.expirationDate IS NULL) OR (p.expirationDate BETWEEN :startDate AND :endDate)) " +
             "AND ((COALESCE(:siteType, '') = '') OR p.patentSite = :siteType) " +
             "AND (:expired IS NULL OR (:expired = TRUE AND (p.registrationDate <= :todayMinus10Years)) " +
             "OR  (:expired = FALSE AND (p.registrationDate > :todayMinus10Years))) " +
-            "AND ((COALESCE(:category, '') = '') OR p.category = :category)" +
-            "ORDER BY " +
-            "CASE WHEN p.expirationDate IS NULL THEN 1 ELSE 0 END, " + // Push NULLs to the end
-            "p.expirationDate DESC, " +
-            "p.id DESC" // Keep original sorting as secondary criteria
+            "AND ((COALESCE(:category, '') = '') OR p.category = :category) " +
+            "AND ((COALESCE(:mktu, '') = '') OR LOWER(af1.value) LIKE  LOWER(CONCAT('%', :mktu, '%'))) " +
+            "AND ((COALESCE(:securityDocNumber, '') = '') OR p.securityDocNumber = :securityDocNumber OR p.registrationNumber = :securityDocNumber) " +
+            "ORDER BY CASE WHEN p.expirationDate IS NULL THEN 1 ELSE 0 END, p.expirationDate DESC, p.id DESC"
     )
     Page<Patent> searchPatents(
             @Param("query") String query,
@@ -42,6 +42,8 @@ public interface PatentRepository extends JpaRepository<Patent, Long>, JpaSpecif
             @Param("expired") Boolean expired,
             @Param("todayMinus10Years") LocalDate todayMinus10Years,
             @Param("category") String category,
+            @Param("mktu") String mktu,
+            @Param("securityDocNumber") String securityDocNumber,
             Pageable pageable
     );
     Optional<Patent> findByRegistrationNumberAndCategory(String registrationNumber, String category);

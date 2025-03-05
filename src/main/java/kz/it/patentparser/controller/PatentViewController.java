@@ -43,6 +43,8 @@ public class PatentViewController {
             @RequestParam(required = false) String siteType,
             @RequestParam(required = false) Boolean expired,
             @RequestParam(defaultValue = "0") String category,
+            @RequestParam(required = false) String mktu,
+            @RequestParam(required = false) String securityDocNumber,
             Model model) {
 
         Page<Patent> patentPage;
@@ -51,7 +53,7 @@ public class PatentViewController {
             patentPage = patentService.getPatents(page, size);
         } else {
             // Если есть параметры → выполняем поиск
-            patentPage = patentService.searchPatents(query, startDate, endDate, page, size, siteType, expired, category);
+            patentPage = patentService.searchPatents(query, startDate, endDate, page, size, siteType, expired, category, mktu, securityDocNumber);
         }
 
         model.addAttribute("patents", patentPage.getContent());
@@ -77,7 +79,10 @@ public class PatentViewController {
                             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
                             @RequestParam(required = false) String siteType,
                             @RequestParam(required = false) Boolean expired,
-                            @RequestParam(defaultValue = "0") String category, Model model) throws IOException {
+                            @RequestParam(defaultValue = "0") String category,
+                            @RequestParam(required = false) String mktu,
+                            @RequestParam(required = false) String securityDocNumber,
+                              Model model) throws IOException {
 
         List<Patent> patents = new ArrayList<>();
         if (query.isEmpty() && startDate == null && endDate == null && siteType == null && expired == null && category.equals("0")) {
@@ -85,7 +90,7 @@ public class PatentViewController {
             patents = patentService.getPatents(1, 300000).getContent();
         } else {
             // Если есть параметры → выполняем поиск
-            patents = patentService.searchPatents(query, startDate, endDate, 1, 100000, siteType, expired, category).getContent();
+            patents = patentService.searchPatents(query, startDate, endDate, 1, 100000, siteType, expired, category, mktu, securityDocNumber).getContent();
         }
         patentService.exportToCsv(response, patents);
         model.addAttribute("patents", patents);

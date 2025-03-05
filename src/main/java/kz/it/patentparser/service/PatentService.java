@@ -47,7 +47,7 @@ public class PatentService {
         return patentRepository.findById(id);
     }
 
-    public Page<Patent> searchPatents(String query, LocalDate startDate, LocalDate endDate, int page, int size, String siteType, Boolean expired, String category) {
+    public Page<Patent> searchPatents(String query, LocalDate startDate, LocalDate endDate, int page, int size, String siteType, Boolean expired, String category, String mktu, String securityDocNumber) {
         Pageable pageable = PageRequest.of(page - 1, size);
 
         if (startDate == null) startDate = LocalDate.of(1800, 1, 1);
@@ -71,11 +71,8 @@ public class PatentService {
         } else {
             category = getPatentsByCategory(Integer.parseInt(category));
         }
-        System.out.println("Category = " + category);
-
-        System.out.println("query = " + cleanedQuery + ", transliteratedQuery1 = " + transliteratedQuery1 + ", transliteratedQuery2 = " + transliteratedQuery2);
-        logger.info("category = " + category + ", siteType = " + siteType + ", expired = " + expired + ", startDate = " + startDate + ", endDate = " + endDate);
-        return patentRepository.searchPatents(query, transliteratedQuery1, transliteratedQuery2, startDate, endDate, siteType, expired, todayMinus10Years, category, pageable);
+        logger.info("Searching patents by query: " + query + ", transliteratedQuery1: " + transliteratedQuery1 + ", transliteratedQuery2: " + transliteratedQuery2 + ", startDate: " + startDate + ", endDate: " + endDate + ", siteType: " + siteType + ", expired: " + expired + ", category: " + category + ", mktu: " + mktu + ", securityDocNumber: " + securityDocNumber);
+        return patentRepository.searchPatents(query, transliteratedQuery1, transliteratedQuery2, startDate, endDate, siteType, expired, todayMinus10Years, category, mktu, securityDocNumber, pageable);
     }
 
     public void exportToCsv(HttpServletResponse response, List<Patent> patents) throws IOException {
