@@ -20,18 +20,19 @@ public interface PatentRepository extends JpaRepository<Patent, Long>, JpaSpecif
     @Query("SELECT p FROM Patent p " +
             "LEFT JOIN PatentAdditionalField af1 ON p.id = af1.patent.id AND af1.label = 'Класс МКТУ' " +
             "WHERE " +
-            "(LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) " +
-            "OR  ((COALESCE(:transliteratedQuery1, '') = '') OR LOWER(p.title) LIKE LOWER(CONCAT('%', :transliteratedQuery1, '%'))) " +
-            "OR ((COALESCE(:transliteratedQuery2, '') = '') OR LOWER(p.title) LIKE LOWER(CONCAT('%', :transliteratedQuery2, '%')))) " +
-            "AND ((p.expirationDate IS NULL) OR (p.expirationDate BETWEEN :startDate AND :endDate)) " +
-            "AND ((COALESCE(:siteType, '') = '') OR p.patentSite = :siteType) " +
-            "AND (:expired IS NULL OR (:expired = TRUE AND (p.registrationDate <= :todayMinus10Years)) " +
-            "OR  (:expired = FALSE AND (p.registrationDate > :todayMinus10Years))) " +
-            "AND ((COALESCE(:category, '') = '') OR p.category = :category) " +
-            "AND ((COALESCE(:mktu, '') = '') OR LOWER(af1.value) LIKE  LOWER(CONCAT('%', :mktu, '%'))) " +
-            "AND ((COALESCE(:securityDocNumber, '') = '') OR p.securityDocNumber = :securityDocNumber OR p.registrationNumber = :securityDocNumber) " +
-            "ORDER BY CASE WHEN p.expirationDate IS NULL THEN 1 ELSE 0 END, p.expirationDate DESC, p.id DESC"
-    )
+            "(COALESCE(LOWER(p.title), '') LIKE LOWER(CONCAT('%', :query, '%')) " +
+            "OR COALESCE(LOWER(p.title), '') LIKE LOWER(CONCAT('%', :transliteratedQuery1, '%')) " +
+            "OR COALESCE(LOWER(p.title), '') LIKE LOWER(CONCAT('%', :transliteratedQuery2, '%'))) " +
+            "AND (p.expirationDate IS NULL OR p.expirationDate BETWEEN :startDate AND :endDate) " +
+            "AND (:siteType IS NULL OR p.patentSite = :siteType) " +
+            "AND (:expired IS NULL OR (:expired = TRUE AND COALESCE(p.registrationDate, '2025-01-01') <= :todayMinus10Years) " +
+            "OR  (:expired = FALSE AND COALESCE(p.registrationDate, '2025-01-01') > :todayMinus10Years)) " +
+            "AND (:category IS NULL OR p.category = :category) " +
+            "AND (:mktu IS NULL OR LOWER(COALESCE(af1.value, '')) LIKE LOWER(CONCAT('%', :mktu, '%'))) " +
+            "AND (:securityDocNumber IS NULL OR " +
+            "     COALESCE(p.securityDocNumber, '') = :securityDocNumber OR " +
+            "     COALESCE(p.registrationNumber, '') = :securityDocNumber) " +
+            "ORDER BY CASE WHEN p.expirationDate IS NULL THEN 1 ELSE 0 END, p.expirationDate DESC, p.id DESC")
     Page<Patent> searchPatents(
             @Param("query") String query,
             @Param("transliteratedQuery1") String transliteratedQuery1,

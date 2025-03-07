@@ -52,9 +52,10 @@ public class PatentService {
 
         if (startDate == null) startDate = LocalDate.of(1800, 1, 1);
         if (endDate == null) endDate = LocalDate.of(2100, 1, 1);
+        if (siteType == "") siteType = null;
         System.out.println("startDate = " + startDate + ", endDate = " + endDate);
-        String transliteratedQuery1 = null;
-        String transliteratedQuery2 = null;
+        String transliteratedQuery1 = "";
+        String transliteratedQuery2 = "";
         String cleanedQuery = fixMixedCharacters(query);
 
         LocalDate todayMinus10Years = LocalDate.now().minusYears(10);  // Текущая дата минус 10 лет
@@ -62,12 +63,14 @@ public class PatentService {
         if (TransliterationUtil.isLatin(query)) {
             transliteratedQuery1 = TransliterationUtil.transliterateLatinToCyrillic(cleanedQuery);
             transliteratedQuery1 = TransliterationUtil.transliterateKazakhToRussian(transliteratedQuery1);
+            transliteratedQuery2 = transliteratedQuery1;
         } else {
             transliteratedQuery2 = TransliterationUtil.transliterateCyrillicToLatin(cleanedQuery);
+            transliteratedQuery1 = transliteratedQuery2;
         }
 
         if (category == null || category.isEmpty() || category.equals("0")) {
-            category = "";
+            category = null;
         } else {
             category = getPatentsByCategory(Integer.parseInt(category));
         }
