@@ -20,9 +20,9 @@ public class PatentStorageService {
     }
 
 
-    public synchronized void saveDocNumber(String category, int docNumber) {
+    public synchronized void saveDocNumber(String category, String docNumber, boolean isParsed) {
         try {
-            DocNumber docNumberObject = new DocNumber(category, docNumber);
+            DocNumber docNumberObject = new DocNumber(category, docNumber, isParsed);
             //check if patent already exists
             if (docNumberRepository.existsByCategoryAndDocumentNumber(category, docNumber)) {
                 logger.info("Patent {} - {} already exists in database", category, docNumber);

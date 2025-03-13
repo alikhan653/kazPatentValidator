@@ -1,5 +1,6 @@
 package kz.it.patentparser.service;
 
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;
 import kz.it.patentparser.enums.PatentCategory;
@@ -196,14 +197,25 @@ public class PatentService {
         patentRepository.saveAll(patents);
     }
 
-    @Transactional
-    public void saveAdditionalFields(PatentAdditionalField additionalField) {
-        additionalFieldRepository.save(additionalField);
+    public void saveAdditionalField(Long patentId, String label, String value) {
+        Optional<Patent> patentOpt = patentRepository.findById(patentId);
+
+        if (patentOpt.isPresent()) {
+            Patent patent = patentOpt.get();
+            PatentAdditionalField additionalField = new PatentAdditionalField(patent, label, value);
+            additionalFieldRepository.save(additionalField);
+        } else {
+            throw new EntityNotFoundException("Patent with ID " + patentId + " not found.");
+        }
     }
 
     @Transactional
     public void saveAllAdditionalFields(List<PatentAdditionalField> additionalFields) {
         additionalFieldRepository.saveAll(additionalFields);
+    }
+
+    public Patent getPatentById(Long id) {
+        return patentRepository.findById(id).orElse(null);
     }
 
     @Transactional

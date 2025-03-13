@@ -47,6 +47,7 @@ public class Patent {
     private String category;
     private String patentSite;
     private String imageUrl;
+    private String docNumber;
 
     @OneToMany(mappedBy = "patent", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PatentAdditionalField> additionalFields;

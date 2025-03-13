@@ -87,7 +87,7 @@ public class PatentCheckerService {
                     if (response.getResponseBody().contains("divHolder")) {
                         logger.info("[Request-{}] ✅ Patent found: {} (Time: {} ms)",
                                 docNumber, url, duration.toMillis());
-                        patentStorageService.saveDocNumber(category, docNumber);
+                        patentStorageService.saveDocNumber(category, String.valueOf(docNumber), false);
                     } else {
                         logger.warn("[Request-{}] Patent {} does not contain valid data (Time: {} ms)",
                                 docNumber, url, duration.toMillis());

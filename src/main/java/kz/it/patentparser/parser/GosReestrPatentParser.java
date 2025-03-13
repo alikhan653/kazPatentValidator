@@ -6,6 +6,7 @@ import kz.it.patentparser.model.PatentAdditionalField;
 import kz.it.patentparser.service.ImageService;
 import kz.it.patentparser.service.PatentService;
 import kz.it.patentparser.service.PatentStorageService;
+import kz.it.patentparser.util.ImageScraper;
 import kz.it.patentparser.validator.PatentValidator;
 import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
@@ -296,7 +297,7 @@ public class GosReestrPatentParser implements PatentParser {
 
                 patentCards = wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(
                         By.cssSelector("div.dxcvFlowCard_Material")));
-                break; // Exit loop if successful
+                break;
             } catch (TimeoutException e) {
                 logger.error("Timeout while waiting for patent cards to load: {}", e.getMessage());
                 break;
@@ -325,7 +326,7 @@ public class GosReestrPatentParser implements PatentParser {
 
             while (retryCount < 3 && !success) {
                 try {
-                    WebElement linkElement = retryFindElement(card, js);
+                    WebElement linkElement = retryFindElement(card, js, webDriver);
                     if(linkElement == null) {
                         logger.warn("No detailed link found for a patent. " + card.getText());
                         break;
@@ -350,15 +351,16 @@ public class GosReestrPatentParser implements PatentParser {
                                 patent.getSecurityDocNumber() != null ? patent.getSecurityDocNumber() : patent.getRegistrationNumber());
                         break;
                     }
+                    String docNumber = (detailUrl.substring(detailUrl.lastIndexOf("=") + 1));
 
                     if (validator.isValid(patent)) {
                         patents.add(patent);
-                        logger.info("Saved patent: {}",
+                        logger.info("Added patent: {}",
                                 patent.getSecurityDocNumber() != null ? patent.getSecurityDocNumber() : patent.getRegistrationNumber());
+                        patentStorageService.saveDocNumber(category, docNumber, true);
                     } else {
                         logger.warn("Invalid patent data, skipping: {}", patent);
-                        int docNumber = Integer.parseInt(detailUrl.substring(detailUrl.lastIndexOf("=") + 1));
-                        patentStorageService.saveDocNumber(category, docNumber);
+                        patentStorageService.saveDocNumber(category, docNumber, false);
                         logger.info("Saving docNumber: {}", docNumber);
                     }
 
@@ -485,6 +487,12 @@ public class GosReestrPatentParser implements PatentParser {
         if (detailedPatent.getOwner() != null) {
             patent.setOwner(detailedPatent.getOwner());
         }
+        if(detailedPatent.getDocNumber() != null) {
+            patent.setDocNumber(detailedPatent.getDocNumber());
+        }
+        if(detailedPatent.getImageUrl() != null) {
+            patent.setImageUrl(detailedPatent.getImageUrl());
+        }
         if (detailedPatent.getAdditionalFields() != null) {
             for (PatentAdditionalField field : detailedPatent.getAdditionalFields()) {
                 field.setPatent(patent); // Важно!
@@ -493,7 +501,7 @@ public class GosReestrPatentParser implements PatentParser {
         }
     }
 
-    private WebElement retryFindElement(WebElement card, JavascriptExecutor js) throws InterruptedException {
+    private WebElement retryFindElement(WebElement card, JavascriptExecutor js, WebDriver driver) throws InterruptedException {
         int attempts = 3;
         while (attempts > 0) {
             try {
@@ -511,6 +519,10 @@ public class GosReestrPatentParser implements PatentParser {
             } catch (NoSuchSessionException e) {
                 logger.error("Session expired, retrying...");
                 return null;
+            } catch (UnhandledAlertException e) {
+                logger.error("Unhandled alert, retrying...");
+                handleAlert(driver);
+                return null;
             } catch (Exception e) {
                 logger.error("Error finding detailed link in card: {}", card.getText(), e);
                 return null;
@@ -521,6 +533,7 @@ public class GosReestrPatentParser implements PatentParser {
 
     private Patent fetchPatentDetails(String url, String category) throws InterruptedException {
         int attempts = 3;
+        String docNumber = url.substring(url.lastIndexOf("=") + 1);
         while (attempts > 0) {
             try {
                 Document doc = Jsoup.connect(url)
@@ -529,6 +542,7 @@ public class GosReestrPatentParser implements PatentParser {
                         .get();
 
                 Patent patent = new Patent();
+                patent.setDocNumber(docNumber);
                 patent.setCategory(category);
                 patent.setPatentSite("gosreestr.kazpatent.kz");
 
@@ -575,8 +589,7 @@ public class GosReestrPatentParser implements PatentParser {
                 Thread.sleep(3000);
             } catch (HttpStatusException e) {
                 if (e.getStatusCode() == 500) {
-                    int docNumber = Integer.parseInt(url.substring(url.lastIndexOf("=") + 1));
-                    patentStorageService.saveDocNumber(category, docNumber);
+                    patentStorageService.saveDocNumber(category, docNumber, false);
                     logger.info("Saving docNumber: {}", docNumber);
                     logger.error("Error fetching patent details because of 500 status");
                     return null;
@@ -584,8 +597,8 @@ public class GosReestrPatentParser implements PatentParser {
                     logger.error("HTTP error: " + e.getStatusCode());
                 }
             } catch (IOException e) {
-                int docNumber = Integer.parseInt(url.substring(url.lastIndexOf("=") + 1));
-                patentStorageService.saveDocNumber(category, docNumber);
+
+                patentStorageService.saveDocNumber(category, docNumber, false);
                 logger.error("Error fetching patent details: {}", e.getMessage());
                 logger.info("Saving docNumber: {}", docNumber);
                 return null;
@@ -658,7 +671,7 @@ public class GosReestrPatentParser implements PatentParser {
                 patent.setFilingDate(LocalDate.parse(value, DATE_FORMATTER));
                 break;
             case "Дата регистрации":
-                patent.setRegistrationDate(LocalDate.parse(value, DATE_FORMATTER));
+                patent.setRegistrationDate(LocalDate.parse(value.substring(0, 10), DATE_FORMATTER));
                 break;
             case "Срок действия":
                 patent.setExpirationDate(LocalDate.parse(value, DATE_FORMATTER));
@@ -746,5 +759,15 @@ public class GosReestrPatentParser implements PatentParser {
             }
         }
         return null;
+    }
+
+    private void handleAlert(WebDriver driver) {
+        try {
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(2));
+            wait.until(ExpectedConditions.alertIsPresent()); // Ждём alert
+            Alert alert = driver.switchTo().alert();
+            logger.warn("Alert detected: " + alert.getText());
+            alert.accept(); // Закрываем alert
+        } catch (NoAlertPresentException e) {}
     }
 }

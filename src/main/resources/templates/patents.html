@@ -116,15 +116,15 @@
   <div th:if="${patents.isEmpty()}" class="alert alert-warning">Нет данных</div>
 
   <div th:each="patent, iterStat : ${patents}" class="search-result">
-<!--    <th:block th:each="field : ${patent.additionalFields}">-->
-<!--      <th:block th:if="${field.label == 'Изображение'}">-->
-<!--        &lt;!&ndash; Если значение - это URL &ndash;&gt;-->
-<!--        <img th:if="${#strings.startsWith(field.value, 'http')}" th:src="${field.value}" alt="Изображение патента1" width="200">-->
+    <th:block th:each="field : ${patent.additionalFields}">
+      <th:block th:if="${field.label == 'imageBase64'}">
+        <!-- Если значение - это URL -->
+        <img th:if="${#strings.startsWith(field.value, 'http')}" th:src="${field.value}" alt="Изображение патента1" width="200">
 
-<!--        &lt;!&ndash; Если значение - это base64 &ndash;&gt;-->
-<!--        <img th:if="${!#strings.startsWith(field.value, 'http')}" th:src="'data:image/png;base64,' + ${field.value}" alt="Изображение патента2" width="200">-->
-<!--      </th:block>-->
-<!--    </th:block>-->
+        <!-- Если значение - это base64 -->
+        <img th:if="${!#strings.startsWith(field.value, 'http')}" th:src="'data:image/png;base64,' + ${field.value}" alt="Изображение патента2" width="200">
+      </th:block>
+    </th:block>
 
 
 <!--    <th:block th:with="imageBase64=${#lists.size(patent.additionalFields.?[label == 'image_base64']) > 0 ? patent.additionalFields.?[label == 'image_base64'][0].value : ''}">-->
@@ -132,8 +132,6 @@
 <!--        <img th:src="${not #strings.isEmpty(patent.imageUrl) ? patent.imageUrl : 'data:image/png;base64,' + imageBase64}" alt="Patent Image" />-->
 <!--      </th:block>-->
 <!--    </th:block>-->
-
-
 
     <div>
       <div>
@@ -238,8 +236,12 @@
                 document.getElementById("modalAdditionalFieldsTitle").style.display = "block";
                 data.additionalFields.forEach(field => {
                   let li = document.createElement("li");
-                  li.textContent = `${field.label}: ${field.value}`;
-                  additionalFieldsContainer.appendChild(li);
+                  if(field.label === 'imageBase64') {
+                    li.innerHTML = `<strong>${field.label}:</strong> <img src="data:image/png;base64,${field.value}" alt="Изображение" width="200">`;
+                  } else {
+                    li.textContent = `${field.label}: ${field.value}`;
+                    additionalFieldsContainer.appendChild(li);
+                  }
                 });
               } else {
                 document.getElementById("modalAdditionalFieldsTitle").style.display = "none";

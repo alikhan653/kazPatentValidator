@@ -4,6 +4,7 @@ import kz.it.patentparser.enums.NavigationDirection;
 import kz.it.patentparser.parser.EbulletinPatentFetcher;
 import kz.it.patentparser.parser.EbulletinPatentParser;
 import kz.it.patentparser.parser.GosReestrPatentParser;
+import kz.it.patentparser.service.PatentRetryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -20,11 +21,13 @@ public class PatentProcessor {
     private final GosReestrPatentParser gosReestrPatentParser;
     private final EbulletinPatentParser ebulletinPatentParser;
     private final EbulletinPatentFetcher ebulletinPatentFetcher;
+    private final PatentRetryService patentRetryService;
 
-    public PatentProcessor(GosReestrPatentParser gosReestrPatentParser, EbulletinPatentParser ebulletinPatentParser, EbulletinPatentFetcher ebulletinPatentFetcher) {
+    public PatentProcessor(GosReestrPatentParser gosReestrPatentParser, EbulletinPatentParser ebulletinPatentParser, EbulletinPatentFetcher ebulletinPatentFetcher, PatentRetryService patentRetryService) {
         this.gosReestrPatentParser = gosReestrPatentParser;
         this.ebulletinPatentParser = ebulletinPatentParser;
         this.ebulletinPatentFetcher = ebulletinPatentFetcher;
+        this.patentRetryService = patentRetryService;
     }
 
     /**
@@ -137,6 +140,14 @@ public class PatentProcessor {
         } finally {
             executor.shutdown(); // Shut down executor
         }
+    }
+
+    public void runRetryService() {
+        patentRetryService.retryFailedPatents();
+    }
+
+    public void runImageScraper() {
+        patentRetryService.fetchMissingImages();
     }
 
 }

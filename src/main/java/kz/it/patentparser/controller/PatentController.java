@@ -73,4 +73,14 @@ public class PatentController {
         return "Проверка завершена!";
     }
 
+    @PostMapping("/retry/image")
+    public String retry1() {
+        patentProcessor.runImageScraper();
+        return "Повторная проверка завершена!";
+    }
+    @PostMapping("/retry/failed")
+    public String retry2() {
+        patentProcessor.runRetryService();
+        return "Повторная проверка завершена!";
+    }
 }
