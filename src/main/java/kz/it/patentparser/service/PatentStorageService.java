@@ -11,7 +11,7 @@ import java.io.IOException;
 
 @Service
 public class PatentStorageService {
-    private static final Logger logger = LoggerFactory.getLogger(PatentCheckerService.class);
+    private static final Logger logger = LoggerFactory.getLogger(PatentStorageService.class);
 
     private final DocNumberRepository docNumberRepository;
 

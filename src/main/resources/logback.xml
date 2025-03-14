@@ -77,8 +77,18 @@
         </encoder>
     </appender>
 
+    <appender name="RETRY" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/retry.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/retry-%d{yyyy-MM-dd}.log</fileNamePattern>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
     <!-- Глобальный логгер (все логи) -->
-    <root level="DEBUG">
+    <root level="INFO">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="ALL_FILE"/>
     </root>
@@ -103,6 +113,7 @@
     <!-- Логгер для ошибок (записывает только ERROR) -->
     <logger name="kz.it.patentparser" level="INFO">
         <appender-ref ref="ERRORS"/>
+        <appender-ref ref="CONSOLE"/>
     </logger>
 
     <!-- Логгер для PatentParserService -->
