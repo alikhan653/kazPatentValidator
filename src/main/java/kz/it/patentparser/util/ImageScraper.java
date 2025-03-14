@@ -26,6 +26,7 @@ public class ImageScraper {
         options.addArguments("--disable-gpu");
 
         driver = new ChromeDriver(options);
+        driver.manage().window().maximize();
         wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
