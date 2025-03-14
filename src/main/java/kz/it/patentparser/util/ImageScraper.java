@@ -15,8 +15,7 @@ import java.util.Base64;
 public class ImageScraper {
 
     public static String captureImageBase64(String patentUrl, Logger logger) {
-        System.setProperty("webdriver.chrome.driver", "C:\\Users\\user\\Downloads\\chromedriver-win64\\chromedriver.exe");
-
+        System.setProperty("webdriver.chrome.driver", "/usr/local/bin/chromedriver");
         ChromeOptions options = new ChromeOptions();
         options.addArguments("--headless");  // Run Chrome in headless mode (no GUI)
         options.addArguments("--no-sandbox"); // Bypass OS security model
