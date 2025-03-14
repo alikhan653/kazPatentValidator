@@ -19,7 +19,8 @@ public class ImageScraper {
 
     static {
         ChromeOptions options = new ChromeOptions();
-//        options.addArguments("--headless");
+        System.setProperty("webdriver.chrome.driver", "/usr/local/bin/chromedriver");
+        options.addArguments("--headless");
         options.addArguments("--no-sandbox");
         options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--disable-gpu");
