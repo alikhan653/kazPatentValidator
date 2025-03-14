@@ -22,7 +22,7 @@ public class ImageScraper {
 //        options.addArguments("--headless");
         options.addArguments("--no-sandbox");
         options.addArguments("--disable-dev-shm-usage");
-        options.addArguments("--user-data-dir=/tmp/chrome-user-" + System.currentTimeMillis());
+        options.addArguments("--disable-gpu");
 
         driver = new ChromeDriver(options);
         wait = new WebDriverWait(driver, Duration.ofSeconds(10));

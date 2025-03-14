@@ -5,7 +5,6 @@ package kz.it.patentparser.controller;
 import kz.it.patentparser.enums.NavigationDirection;
 import kz.it.patentparser.parser.PatentParser;
 import kz.it.patentparser.processor.PatentProcessor;
-import kz.it.patentparser.service.PatentCheckerService;
 import kz.it.patentparser.service.PatentService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -19,13 +18,11 @@ import java.util.List;
 public class PatentController {
 
     private final PatentProcessor patentProcessor;
-    private final PatentCheckerService patentCheckerService;
     private final PatentService patentService;
 
 
-    public PatentController(PatentProcessor patentProcessor, PatentCheckerService patentCheckerService, PatentService patentService) {
+    public PatentController(PatentProcessor patentProcessor, PatentService patentService) {
         this.patentProcessor = patentProcessor;
-        this.patentCheckerService = patentCheckerService;
         this.patentService = patentService;
     }
 
@@ -67,11 +64,11 @@ public class PatentController {
         return "Парсинг завершен!";
     }
 
-    @PostMapping("/check/{category}/{from}/{to}")
-    public String check(@PathVariable String category, @PathVariable int from, @PathVariable int to) {
-        patentCheckerService.startProcessing(category, from, to);
-        return "Проверка завершена!";
-    }
+//    @PostMapping("/check/{category}/{from}/{to}")
+//    public String check(@PathVariable String category, @PathVariable int from, @PathVariable int to) {
+//        patentCheckerService.startProcessing(category, from, to);
+//        return "Проверка завершена!";
+//    }
 
     @PostMapping("/retry/image")
     public String retry1() {
