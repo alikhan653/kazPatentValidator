@@ -11,58 +11,67 @@ import java.io.File;
 import java.nio.file.Files;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.List;
 
 public class ImageScraper {
+    private static WebDriver driver;
+    private static WebDriverWait wait;
 
-    public static String captureImageBase64(String patentUrl, Logger logger) {
-        System.setProperty("webdriver.chrome.driver", "/usr/local/bin/chromedriver");
+    static {
         ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless");  // Run Chrome in headless mode (no GUI)
-        options.addArguments("--no-sandbox"); // Bypass OS security model
-        options.addArguments("--disable-dev-shm-usage"); // Prevent crashes on low-memory environments
-        WebDriver driver = new ChromeDriver(options);
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+//        options.addArguments("--headless");
+        options.addArguments("--no-sandbox");
+        options.addArguments("--disable-dev-shm-usage");
+
+        driver = new ChromeDriver(options);
+        wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (driver != null) {
+                driver.quit();
+            }
+        }));
+    }
+
+
+    public static synchronized String captureImageBase64(String patentUrl, Logger logger) {
         try {
             driver.get(patentUrl);
-            // Wait for the main container (ensuring page is loaded)
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("body")));
 
-            WebElement imgElement = driver.findElements(By.cssSelector("div.plan_img5 img, div.plan_img img"))
-                    .stream()
-                    .filter(WebElement::isDisplayed)
-                    .findFirst()
-                    .orElse(null);
+            File screenshot = null;
 
-            File screenshot;
-
-            if (imgElement != null && imgElement.isDisplayed()) {
-                // Capture the image if found
+            // Try to find the image element without waiting
+            WebElement imgElement = driver.findElement(By.cssSelector("div.plan_img5 img, div.plan_img img"));
+            if (imgElement.isDisplayed()) {
                 screenshot = imgElement.getScreenshotAs(OutputType.FILE);
                 logger.info("Image captured successfully.");
             } else {
-                // If no image, find and capture text section
-                WebElement textElement = driver.findElements(By.cssSelector("div.col-lg-4 h3"))
-                        .stream()
-                        .filter(WebElement::isDisplayed)
-                        .findFirst()
-                        .orElse(null);
-
-                if (textElement != null && textElement.isDisplayed()) {
+                // If image is not visible, check for text
+                WebElement textElement = driver.findElement(By.cssSelector("div.col-lg-4 h3"));
+                if (textElement.isDisplayed()) {
                     screenshot = textElement.getScreenshotAs(OutputType.FILE);
                     logger.info("Text-based screenshot captured successfully.");
-                } else {
-                    logger.warn("No image or text found.");
-                    return null;
                 }
+            }
+
+            if (screenshot == null) {
+                logger.warn("No image or text found.");
+                return null;
             }
 
             byte[] fileContent = Files.readAllBytes(screenshot.toPath());
             return Base64.getEncoder().encodeToString(fileContent);
+
+        } catch (NoSuchElementException e) {
+            logger.warn("No image or text found on the page.");
+        } catch (TimeoutException e) {
+            logger.error("Page elements did not load in time.", e);
         } catch (Exception e) {
-            logger.error("Error capturing image: " + e.getMessage());
-            return null;
-        } finally {
-            driver.quit();
+            logger.error("Error capturing image", e);
         }
+        return null;
     }
+
+
 }

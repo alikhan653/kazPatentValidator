@@ -214,10 +214,9 @@ public class PatentService {
         additionalFieldRepository.saveAll(additionalFields);
     }
 
-    public Patent getPatentById(Long id) {
-        return patentRepository.findById(id).orElse(null);
+    public Patent getPatentByDocNumber(String docNumber) {
+        return patentRepository.findByDocNumber(docNumber).orElse(null);
     }
-
     @Transactional
     public boolean isPatentExists(Patent patent) {
         if (patent == null) return false;

@@ -71,7 +71,7 @@ public class PatentRetryService {
             try {
                 String imageBase64 = ImageScraper.captureImageBase64(url, logger);
                 if (imageBase64 != null) {
-                    Patent patentEntity = patentService.getPatentById(patent.getId());
+                    Patent patentEntity = patentService.getPatentByDocNumber(patent.getDocumentNumber());
                     patentService.saveAdditionalField(patentEntity.getId(), "imageBase64", imageBase64);
                     logger.info("Image fetched for docNumber: {}", patent.getDocumentNumber());
                 }

@@ -116,5 +116,6 @@ public interface PatentRepository extends JpaRepository<Patent, Long>, JpaSpecif
             @Param("category") String category
     );
 
+    Optional<Patent> findByDocNumber(String docNumber);
 
 }

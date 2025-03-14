@@ -109,13 +109,6 @@
         <appender-ref ref="CONSOLE"/>
     </logger>
 
-
-    <!-- Логгер для ошибок (записывает только ERROR) -->
-    <logger name="kz.it.patentparser" level="INFO">
-        <appender-ref ref="ERRORS"/>
-        <appender-ref ref="CONSOLE"/>
-    </logger>
-
     <!-- Логгер для PatentParserService -->
     <logger name="kz.it.kazpatentparser.service.PatentParserService" level="DEBUG" additivity="false">
         <appender-ref ref="PATENT_PARSER_FILE"/>
