@@ -74,6 +74,8 @@ public class PatentRetryService {
                     Patent patentEntity = patentService.getPatentByDocNumber(patent.getDocumentNumber());
                     patentService.saveAdditionalField(patentEntity.getId(), "imageBase64", imageBase64);
                     logger.info("Image fetched for docNumber: {}", patent.getDocumentNumber());
+                } else {
+                    logger.warn("No image found for docNumber: {}", patent.getDocumentNumber());
                 }
             } catch (Exception e) {
                 logger.error("Error fetching image for docNumber: {}", patent.getDocumentNumber(), e);

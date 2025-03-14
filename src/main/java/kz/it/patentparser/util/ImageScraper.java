@@ -58,7 +58,6 @@ public class ImageScraper {
             }
 
             if (screenshot == null) {
-                logger.warn("No image or text found.");
                 return null;
             }
 
