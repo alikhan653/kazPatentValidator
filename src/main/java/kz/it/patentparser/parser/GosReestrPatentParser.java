@@ -234,7 +234,7 @@ public class GosReestrPatentParser implements PatentParser {
         while (true) {
             try {
 
-                scroll(js, false);
+                scroll(webDriver, js, false);
                 List<Patent> pagePatents = parsePatents(webDriver, wait, category, js);
 
                 savePatentData(pagePatents);
@@ -293,7 +293,7 @@ public class GosReestrPatentParser implements PatentParser {
                 wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("cvReestr_DXMainTable")));
                 logger.debug("Search results loaded for category: {}", category);
 
-                scroll(js, true);
+                scroll(webDriver, js, true);
 
                 patentCards = wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(
                         By.cssSelector("div.dxcvFlowCard_Material")));
@@ -409,7 +409,7 @@ public class GosReestrPatentParser implements PatentParser {
         }
     }
 
-    private static void scroll(JavascriptExecutor js, boolean scrollToBottom) throws InterruptedException {
+    private void scroll(WebDriver driver, JavascriptExecutor js, boolean scrollToBottom) throws InterruptedException {
         //retry if any exception occurs
         int attempts = 3;
         while (attempts > 0) {
@@ -433,6 +433,10 @@ public class GosReestrPatentParser implements PatentParser {
                 }
                 Thread.sleep(3000);
                 break;
+            } catch (UnhandledAlertException e) {
+                logger.error("Unhandled alert, retrying...");
+                handleAlert(driver);
+                Thread.sleep(3000);
             } catch (Exception e) {
                 attempts--;
                 logger.error("Error scrolling page, retrying..." + e);
@@ -509,9 +513,9 @@ public class GosReestrPatentParser implements PatentParser {
             } catch (StaleElementReferenceException e) {
                 attempts--;
                 logger.error("Stale element reference finding detailed link, retrying...");
-                scroll(js, false);
+                scroll(driver, js, false);
                 Thread.sleep(3000);
-                scroll(js, true);
+                scroll(driver, js, true);
                 Thread.sleep(3000);
             } catch (NoSuchElementException e) {
                 logger.error("No detailed link found in card: {}", card.getText());
