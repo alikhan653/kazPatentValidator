@@ -12,6 +12,8 @@ import kz.it.patentparser.repository.PatentRepository;
 import kz.it.patentparser.util.TransliterationUtil;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -39,6 +41,7 @@ public class PatentService {
         this.additionalFieldRepository = additionalFieldRepository;
     }
 
+    @Cacheable(value = "patents", key = "#page + '-' + #size")
     public Page<Patent> getPatents(int page, int size) {
         Pageable pageable = PageRequest.of(page - 1, size, Sort.by("id").descending());
         return patentRepository.findAll(pageable);
@@ -48,6 +51,8 @@ public class PatentService {
         return patentRepository.findById(id);
     }
 
+
+    @Cacheable(value = "patentsCache", key = "{#query, #startDate, #endDate, #page, #size, #siteType, #expired, #category, #mktu, #securityDocNumber}")
     public Page<Patent> searchPatents(String query, LocalDate startDate, LocalDate endDate, int page, int size, String siteType, Boolean expired, String category, String mktu, String securityDocNumber) {
         Pageable pageable = PageRequest.of(page - 1, size);
 
@@ -77,6 +82,11 @@ public class PatentService {
         }
         logger.info("Searching patents by query: " + query + ", transliteratedQuery1: " + transliteratedQuery1 + ", transliteratedQuery2: " + transliteratedQuery2 + ", startDate: " + startDate + ", endDate: " + endDate + ", siteType: " + siteType + ", expired: " + expired + ", category: " + category + ", mktu: " + mktu + ", securityDocNumber: " + securityDocNumber);
         return patentRepository.searchPatents(query, transliteratedQuery1, transliteratedQuery2, startDate, endDate, siteType, expired, todayMinus10Years, category, mktu, securityDocNumber, pageable);
+    }
+
+    @CacheEvict(value = "patentsCache", allEntries = true)
+    public void clearPatentCache() {
+        logger.info("Clearing patents cache...");
     }
 
     public void exportToCsv(HttpServletResponse response, List<Patent> patents) throws IOException {
