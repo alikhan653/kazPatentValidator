@@ -19,6 +19,10 @@ import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 @Service
 public class PatentRetryService {
@@ -61,28 +65,37 @@ public class PatentRetryService {
     }
 
 //    @Scheduled(fixedRate = 86400000) // Run once per day
-    public void fetchMissingImages() {
-        logger.info("Starting image fetching for patents without images");
+public void fetchMissingImages() {
+    logger.info("Starting parallel image fetching for patents without images");
 
-        List<DocNumber> patentsWithoutImages = failedPatentRepository.findPatentsWithoutImages();
+    List<DocNumber> patentsWithoutImages = failedPatentRepository.findPatentsWithoutImages();
+    ExecutorService executor = Executors.newFixedThreadPool(10); // Adjust pool size as needed
 
-        for (DocNumber patent : patentsWithoutImages) {
-            String url = generatePatentUrl(Integer.parseInt(patent.getDocumentNumber()), patent.getCategory());
-            try {
-                String imageBase64 = ImageScraper.captureImageBase64(url, logger);
-                if (imageBase64 != null) {
-                    Patent patentEntity = patentService.getPatentByDocNumber(patent.getDocumentNumber());
-                    patentService.saveAdditionalField(patentEntity.getId(), "imageBase64", imageBase64);
-                    logger.info("Image fetched for docNumber: {}", patent.getDocumentNumber());
-                } else {
-                    logger.warn("No image found for docNumber: {}", patent.getDocumentNumber());
-                }
-            } catch (Exception e) {
-                logger.error("Error fetching image for docNumber: {}", patent.getDocumentNumber(), e);
+    List<CompletableFuture<Void>> futures = patentsWithoutImages.stream()
+            .map(patent -> CompletableFuture.runAsync(() -> processPatentImage(patent), executor))
+            .collect(Collectors.toList());
+
+    // Wait for all tasks to complete
+    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+    executor.shutdown();
+    logger.info("Image fetching finished for patents without images");
+}
+
+    private void processPatentImage(DocNumber patent) {
+        String url = generatePatentUrl(Integer.parseInt(patent.getDocumentNumber()), patent.getCategory());
+        try {
+            String imageBase64 = ImageScraper.captureImageBase64(url, logger);
+            if (imageBase64 != null) {
+                Patent patentEntity = patentService.getPatentByDocNumber(patent.getDocumentNumber());
+                patentService.saveAdditionalField(patentEntity.getId(), "imageBase64", imageBase64);
+                logger.info("Image fetched for docNumber: {}", patent.getDocumentNumber());
+            } else {
+                logger.warn("No image found for docNumber: {}", patent.getDocumentNumber());
             }
+        } catch (Exception e) {
+            logger.error("Error fetching image for docNumber: {}", patent.getDocumentNumber(), e);
         }
-
-        logger.info("Image fetching finished for patents without images");
     }
 
     private String getCategory(String category) {
