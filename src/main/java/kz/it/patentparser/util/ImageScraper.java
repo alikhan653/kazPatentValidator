@@ -19,7 +19,7 @@ public class ImageScraper {
 
     static {
         ChromeOptions options = new ChromeOptions();
-        System.setProperty("webdriver.chrome.driver", "/usr/local/bin/chromedriver");
+        System.setProperty("webdriver.chrome.driver", "C:\\Users\\user\\Downloads\\chromedriver-win64\\chromedriver.exe");
         options.addArguments("--headless");
         options.addArguments("--no-sandbox");
         options.addArguments("--disable-dev-shm-usage");
@@ -45,16 +45,22 @@ public class ImageScraper {
             File screenshot = null;
 
             // Try to find the image element without waiting
-            WebElement imgElement = driver.findElement(By.cssSelector("div.plan_img5 img, div.plan_img img"));
-            if (imgElement.isDisplayed()) {
-                screenshot = imgElement.getScreenshotAs(OutputType.FILE);
-                logger.info("Image captured successfully.");
-            } else {
-                // If image is not visible, check for text
-                WebElement textElement = driver.findElement(By.cssSelector("div.col-lg-4 h3"));
-                if (textElement.isDisplayed()) {
-                    screenshot = textElement.getScreenshotAs(OutputType.FILE);
-                    logger.info("Text-based screenshot captured successfully.");
+            try {
+                WebElement imgElement = driver.findElement(By.cssSelector("div.plan_img5 img, div.plan_img img"));
+                if (imgElement.isDisplayed()) {
+                    screenshot = imgElement.getScreenshotAs(OutputType.FILE);
+                    logger.info("Image captured successfully.");
+                }
+            } catch (NoSuchElementException e) {
+                try {
+                    WebElement textElement = driver.findElement(By.cssSelector("div.col-lg-4 h3"));
+                    if (textElement.isDisplayed()) {
+                        logger.info("Text captured successfully.");
+                        return "text/"+textElement.getText();
+                    }
+                } catch (NoSuchElementException e1) {
+                    logger.warn("No image or text found on the page. " + e1);
+                    return null;
                 }
             }
 
@@ -66,7 +72,7 @@ public class ImageScraper {
             return Base64.getEncoder().encodeToString(fileContent);
 
         } catch (NoSuchElementException e) {
-            logger.warn("No image or text found on the page.");
+            logger.warn("No image or text found on the page. " + e);
         } catch (TimeoutException e) {
             logger.error("Page elements did not load in time.", e);
         } catch (Exception e) {

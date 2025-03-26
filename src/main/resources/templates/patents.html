@@ -119,10 +119,13 @@
     <th:block th:each="field : ${patent.additionalFields}">
       <th:block th:if="${field.label == 'imageBase64'}">
         <!-- Если значение - это URL -->
-        <img loading="lazy" th:if="${#strings.startsWith(field.value, 'http')}" th:src="${field.value}" alt="Изображение патента1" width="200">
+<!--        <img loading="lazy" th:if="${#strings.startsWith(field.value, 'http')}" th:src="${field.value}" alt="Изображение патента1" width="200">-->
+
+        <!-- Если значение - это text, убрать text/ в начале значения-->
+        <h3 th:if="${#strings.startsWith(field.value, 'text/')}" th:text="${field.value.substring(5)}"></h3>
 
         <!-- Если значение - это base64 -->
-        <img loading="lazy" th:if="${!#strings.startsWith(field.value, 'http')}" th:src="'data:image/png;base64,' + ${field.value}" alt="Изображение патента2" width="200">
+        <img loading="lazy" th:if="${!#strings.startsWith(field.value, 'text/')}" th:src="'data:image/png;base64,' + ${field.value}" alt="Изображение патента2" width="200">
       </th:block>
     </th:block>
 
