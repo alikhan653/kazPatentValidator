@@ -118,4 +118,28 @@ public interface PatentRepository extends JpaRepository<Patent, Long>, JpaSpecif
 
     Optional<Patent> findByDocNumber(String docNumber);
 
+    @Query("SELECT p FROM Patent p WHERE 1=1")
+    Page<Patent> findAllPatents(Pageable pageable);
+
+    @Query("SELECT p FROM Patent p WHERE LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%'))")
+    Page<Patent> findByTitle(@Param("query") String query, Pageable pageable);
+
+    @Query("SELECT p FROM Patent p WHERE p.expirationDate BETWEEN :startDate AND :endDate")
+    Page<Patent> findByExpirationDate(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate, Pageable pageable);
+
+    @Query("SELECT p FROM Patent p WHERE p.patentSite = :siteType")
+    Page<Patent> findBySiteType(@Param("siteType") String siteType, Pageable pageable);
+
+    @Query("SELECT p FROM Patent p WHERE p.category = :category")
+    Page<Patent> findByCategory(@Param("category") String category, Pageable pageable);
+
+    @Query("SELECT p FROM Patent p JOIN PatentAdditionalField af1 ON p.id = af1.patent.id AND af1.label = 'Класс МКТУ' WHERE LOWER(af1.value) LIKE LOWER(CONCAT('%', :mktu, '%'))")
+    Page<Patent> findByMktu(@Param("mktu") String mktu, Pageable pageable);
+
+    @Query("SELECT p FROM Patent p WHERE p.securityDocNumber = :securityDocNumber OR p.registrationNumber = :securityDocNumber")
+    Page<Patent> findBySecurityDocNumber(@Param("securityDocNumber") String securityDocNumber, Pageable pageable);
+
+    @Query("SELECT p FROM Patent p WHERE p.registrationDate IS NULL OR p.registrationDate <= :todayMinus10Years")
+    Page<Patent> findExpiredPatents(@Param("todayMinus10Years") LocalDate todayMinus10Years, Pageable pageable);
+
 }

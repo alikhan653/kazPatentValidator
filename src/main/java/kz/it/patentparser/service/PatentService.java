@@ -9,6 +9,7 @@ import kz.it.patentparser.model.PatentAdditionalField;
 import kz.it.patentparser.parser.GosReestrPatentParser;
 import kz.it.patentparser.repository.PatentAdditionalFieldRepository;
 import kz.it.patentparser.repository.PatentRepository;
+import kz.it.patentparser.util.PatentSpecifications;
 import kz.it.patentparser.util.TransliterationUtil;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -52,37 +54,28 @@ public class PatentService {
     }
 
 
-    @Cacheable(value = "patentsCache", key = "{#query, #startDate, #endDate, #page, #size, #siteType, #expired, #category, #mktu, #securityDocNumber}")
-    public Page<Patent> searchPatents(String query, LocalDate startDate, LocalDate endDate, int page, int size, String siteType, Boolean expired, String category, String mktu, String securityDocNumber) {
-        Pageable pageable = PageRequest.of(page - 1, size);
+    @Cacheable(value = "patentsCache", key = "{#query, #startDate, #endDate, #siteType, #expired, #category, #mktu, #securityDocNumber, #pageable}")
+    public Page<Patent> searchPatents(String query, LocalDate startDate, LocalDate endDate, String siteType, Boolean expired, String category, String mktu, String securityDocNumber, Pageable pageable) {
+        List<Specification<Patent>> specs = new ArrayList<>();
+        logger.info("Searching patents with params: query={}, startDate={}, endDate={}, siteType={}, expired={}, category={}, mktu={}, securityDocNumber={}",
+                query, startDate, endDate, siteType, expired, category, mktu, securityDocNumber);
+        if (query != null && !query.isEmpty()) specs.add(PatentSpecifications.hasTitle(query));
+        if (startDate != null || endDate != null) specs.add(PatentSpecifications.hasExpirationDateBetween(startDate, endDate));
+        if (siteType != null && !siteType.isEmpty()) specs.add(PatentSpecifications.hasSiteType(siteType));
+        if (category != null && !category.equals("0")) specs.add(PatentSpecifications.hasCategory(category));
+        if (mktu != null && !mktu.isEmpty()) specs.add(PatentSpecifications.hasMktu(mktu));
+        if (securityDocNumber != null && !securityDocNumber.isEmpty()) specs.add(PatentSpecifications.hasSecurityDocNumber(securityDocNumber));
+        if (expired != null) specs.add(PatentSpecifications.isExpired(expired, LocalDate.now().minusYears(10)));
 
-        if (startDate == null) startDate = LocalDate.of(1800, 1, 1);
-        if (endDate == null) endDate = LocalDate.of(2100, 1, 1);
-        if (siteType == "") siteType = null;
-        System.out.println("startDate = " + startDate + ", endDate = " + endDate);
-        String transliteratedQuery1 = "";
-        String transliteratedQuery2 = "";
-        String cleanedQuery = fixMixedCharacters(query);
+        Specification<Patent> finalSpec = specs.stream().reduce(Specification::and).orElse(null);
+        Specification<Patent> sortedSpec = finalSpec != null ? finalSpec.and(PatentSpecifications.customSorting())
+                : PatentSpecifications.customSorting();
 
-        LocalDate todayMinus10Years = LocalDate.now().minusYears(10);  // Текущая дата минус 10 лет
-
-        if (TransliterationUtil.isLatin(query)) {
-            transliteratedQuery1 = TransliterationUtil.transliterateLatinToCyrillic(cleanedQuery);
-            transliteratedQuery1 = TransliterationUtil.transliterateKazakhToRussian(transliteratedQuery1);
-            transliteratedQuery2 = transliteratedQuery1;
-        } else {
-            transliteratedQuery2 = TransliterationUtil.transliterateCyrillicToLatin(cleanedQuery);
-            transliteratedQuery1 = transliteratedQuery2;
-        }
-
-        if (category == null || category.isEmpty() || category.equals("0")) {
-            category = null;
-        } else {
-            category = getPatentsByCategory(Integer.parseInt(category));
-        }
-        logger.info("Searching patents by query: " + query + ", transliteratedQuery1: " + transliteratedQuery1 + ", transliteratedQuery2: " + transliteratedQuery2 + ", startDate: " + startDate + ", endDate: " + endDate + ", siteType: " + siteType + ", expired: " + expired + ", category: " + category + ", mktu: " + mktu + ", securityDocNumber: " + securityDocNumber);
-        return patentRepository.searchPatents(query, transliteratedQuery1, transliteratedQuery2, startDate, endDate, siteType, expired, todayMinus10Years, category, mktu, securityDocNumber, pageable);
+        logger.info("Final spec: {}", finalSpec);
+        logger.info("Pageable: {}", pageable);
+        return patentRepository.findAll(sortedSpec, pageable);
     }
+
 
     @CacheEvict(value = "patentsCache", allEntries = true)
     public void clearPatentCache() {
