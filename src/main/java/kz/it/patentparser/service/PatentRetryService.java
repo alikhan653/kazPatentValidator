@@ -65,10 +65,9 @@ public class PatentRetryService {
     }
 
 //    @Scheduled(fixedRate = 86400000) // Run once per day
-public void fetchMissingImages() {
+public void fetchMissingImages(String order) {
     logger.info("Starting parallel image fetching for patents without images");
-
-    List<DocNumber> patentsWithoutImages = failedPatentRepository.findPatentsWithoutImages();
+    List<DocNumber> patentsWithoutImages = order.equals("desc") ? failedPatentRepository.findPatentsWithoutImagesDesc() : failedPatentRepository.findPatentsWithoutImagesAsc();
     ExecutorService executor = Executors.newFixedThreadPool(10); // Adjust pool size as needed
 
     List<CompletableFuture<Void>> futures = patentsWithoutImages.stream()

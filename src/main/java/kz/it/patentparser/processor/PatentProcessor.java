@@ -146,8 +146,8 @@ public class PatentProcessor {
         patentRetryService.retryFailedPatents();
     }
 
-    public void runImageScraper() {
-        patentRetryService.fetchMissingImages();
+    public void runImageScraper(String order) {
+        patentRetryService.fetchMissingImages(order);
     }
 
 }
