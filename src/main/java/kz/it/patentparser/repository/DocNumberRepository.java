@@ -10,9 +10,9 @@ public interface DocNumberRepository extends JpaRepository<DocNumber, Long> {
     boolean existsByCategoryAndDocumentNumber(String category, String documentNumber);
     List<DocNumber> findByIsParsedFalse();
 
-    @Query("SELECT d FROM DocNumber d WHERE d.category = 'Товарные знаки' AND NOT EXISTS (SELECT 1 FROM PatentAdditionalField p WHERE p.patent.docNumber = d.documentNumber AND p.label = 'imageBase64')")
+    @Query("SELECT d FROM DocNumber d WHERE d.category = 'Товарные знаки' AND NOT EXISTS (SELECT 1 FROM PatentAdditionalField p WHERE p.patent.docNumber = d.documentNumber AND p.label = 'imageBase64') ORDER BY CAST(d.documentNumber AS long) ASC")
     List<DocNumber> findPatentsWithoutImagesAsc();
 
-    @Query("SELECT d FROM DocNumber d WHERE d.category = 'Товарные знаки' AND NOT EXISTS (SELECT 1 FROM PatentAdditionalField p WHERE p.patent.docNumber = d.documentNumber AND p.label = 'imageBase64') ORDER BY d.documentNumber DESC")
+    @Query("SELECT d FROM DocNumber d WHERE d.category = 'Товарные знаки' AND NOT EXISTS (SELECT 1 FROM PatentAdditionalField p WHERE p.patent.docNumber = d.documentNumber AND p.label = 'imageBase64') ORDER BY CAST(d.documentNumber AS long) DESC")
     List<DocNumber> findPatentsWithoutImagesDesc();
 }
