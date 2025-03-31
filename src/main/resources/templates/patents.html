@@ -54,7 +54,7 @@
   <!-- Форма поиска -->
   <form id="searchForm" action="/patents" method="GET" class="row g-3 mb-4">
     <div class="col-md-6">
-        <label for="query">Поиск по названию патента</label>
+        <label for="query">Поиск по наименованию товарного знака</label>
       <input type="text" name="query" class="form-control" >
     </div>
     <div class="col-md-3">
@@ -66,10 +66,10 @@
       <input type="date" id="endDate" name="endDate" class="form-control">
     </div>
     <div class="col-md-3">
-      <input type="text" id="securityDocNumber" name="securityDocNumber" class="form-control" placeholder="Doc Number">
+      <input type="text" id="securityDocNumber" name="securityDocNumber" class="form-control" placeholder="Doc Number - Номер документа">
     </div>
     <div class="col-md-3">
-      <input type="text" id="mktu" name="mktu" class="form-control" placeholder="MKTU">
+      <input type="text" id="mktu" name="mktu" class="form-control" placeholder="MTKU - Класс МКТУ">
     </div>
 
 
@@ -137,11 +137,13 @@
 <!--    </th:block>-->
 
     <div>
-      <div>
-        <a class="google-url" th:onclick="|openPatentModal(${patent.id})|" th:text="'patents/' + ${patent.id}"></a>
-      </div>
+<!--      <div>-->
+<!--        <a class="google-url" th:onclick="|openPatentModal(${patent.id})|" th:text="'patents/' + ${patent.id}"></a>-->
+<!--      </div>-->
       <h3>
-        <a href="#" th:attr="data-id=${patent.id}" class="open-modal" th:onclick="|openPatentModal(${patent.id})|"  th:text="${patent.title}"></a>
+        <a href="#" th:attr="data-id=${patent.id}" class="open-modal"
+           th:onclick="|openPatentModal(${patent.id})|"
+           th:text="${not #strings.isEmpty(patent.title) ? patent.title : 'Без названия'}"></a>
       </h3>
       <p class="description">
         <strong>№:</strong> <span th:text="${patent.securityDocNumber != null ? patent.securityDocNumber : patent.registrationNumber}"></span> |
