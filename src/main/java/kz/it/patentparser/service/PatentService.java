@@ -21,6 +21,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -36,17 +37,24 @@ public class PatentService {
     Logger logger = org.slf4j.LoggerFactory.getLogger(GosReestrPatentParser.class);
     private final PatentRepository patentRepository;
     private final PatentAdditionalFieldRepository additionalFieldRepository;
+    private final PatentApiClient patentApiClient;
+
 
     @Autowired
-    public PatentService(PatentRepository patentRepository, PatentAdditionalFieldRepository additionalFieldRepository) {
+    public PatentService(PatentRepository patentRepository, PatentAdditionalFieldRepository additionalFieldRepository, PatentApiClient patentApiClient) {
         this.patentRepository = patentRepository;
         this.additionalFieldRepository = additionalFieldRepository;
+        this.patentApiClient = patentApiClient;
     }
 
     @Cacheable(value = "patents", key = "#page + '-' + #size")
     public Page<Patent> getPatents(int page, int size) {
         Pageable pageable = PageRequest.of(page - 1, size, Sort.by("id").descending());
         return patentRepository.findAll(pageable);
+    }
+
+    public Mono<String> getImageBase64(String patentId, String endpoint) {
+        return patentApiClient.fetchImageBase64(patentId, endpoint);
     }
 
     public Optional<Patent> findById(Long id) {

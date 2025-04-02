@@ -65,21 +65,16 @@ public class PatentRetryService {
     }
 
 //    @Scheduled(fixedRate = 86400000) // Run once per day
-public void fetchMissingImages(String order) {
-    logger.info("Starting parallel image fetching for patents without images");
-    List<DocNumber> patentsWithoutImages = order.equals("desc") ? failedPatentRepository.findPatentsWithoutImagesDesc() : failedPatentRepository.findPatentsWithoutImagesAsc();
-    ExecutorService executor = Executors.newFixedThreadPool(10); // Adjust pool size as needed
+    public void fetchMissingImages(String order) {
+        logger.info("Starting image fetching for patents without images");
 
-    List<CompletableFuture<Void>> futures = patentsWithoutImages.stream()
-            .map(patent -> CompletableFuture.runAsync(() -> processPatentImage(patent), executor))
-            .collect(Collectors.toList());
+        List<DocNumber> patentsWithoutImages = order.equals("desc") ? failedPatentRepository.findPatentsWithoutImagesDesc() : failedPatentRepository.findPatentsWithoutImagesAsc();
 
-    // Wait for all tasks to complete
-    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-
-    executor.shutdown();
-    logger.info("Image fetching finished for patents without images");
-}
+        for (DocNumber patent : patentsWithoutImages) {
+            processPatentImage(patent);
+        }
+        logger.info("Image fetching finished for patents without images");
+    }
 
     private void processPatentImage(DocNumber patent) {
         String url = generatePatentUrl(Integer.parseInt(patent.getDocumentNumber()), patent.getCategory());

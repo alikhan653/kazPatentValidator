@@ -215,7 +215,7 @@ public class EbulletinPatentFetcher implements PatentParser{
 
         String patentImage = dto.getImageBase64();
         if(patentImage != null && !patentImage.isEmpty()){
-            additionalFields.add(new PatentAdditionalField(patent, "image_base64", patentImage));
+            additionalFields.add(new PatentAdditionalField(patent, "imageBase64", patentImage));
         }
 
         patent.setAdditionalFields(additionalFields);

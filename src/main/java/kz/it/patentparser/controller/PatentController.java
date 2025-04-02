@@ -5,10 +5,12 @@ package kz.it.patentparser.controller;
 import kz.it.patentparser.enums.NavigationDirection;
 import kz.it.patentparser.parser.PatentParser;
 import kz.it.patentparser.processor.PatentProcessor;
+import kz.it.patentparser.service.PatentApiClient;
 import kz.it.patentparser.service.PatentService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -19,11 +21,13 @@ public class PatentController {
 
     private final PatentProcessor patentProcessor;
     private final PatentService patentService;
+    private final PatentApiClient patentApiClient;
 
 
-    public PatentController(PatentProcessor patentProcessor, PatentService patentService) {
+    public PatentController(PatentProcessor patentProcessor, PatentService patentService, PatentApiClient patentApiClient) {
         this.patentProcessor = patentProcessor;
         this.patentService = patentService;
+        this.patentApiClient = patentApiClient;
     }
 
     @PostMapping("/parse")
@@ -79,5 +83,10 @@ public class PatentController {
     public String retry2() {
         patentProcessor.runRetryService();
         return "Повторная проверка завершена!";
+    }
+
+    @GetMapping("/image/ebulletin/{patentId}/{endpoint}")
+    public Mono<String> fetchImage(@PathVariable String patentId, @PathVariable String endpoint) {
+        return patentApiClient.fetchImageBase64(patentId, endpoint);
     }
 }

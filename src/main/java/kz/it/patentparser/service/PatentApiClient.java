@@ -27,6 +27,32 @@ public class PatentApiClient {
         this.objectMapper = objectMapper;
     }
 
+    public Mono<String> fetchImageBase64(String patentId, String endpoint) {
+        String imageEndpoint = endpoint + "/" + patentId + "?eksp=false";
+
+        return webClient.get()
+                .uri("/bulletin/" + imageEndpoint)
+                .retrieve()
+                .bodyToMono(String.class)  // Получаем строку
+                .map(base64Image -> {
+                    // Убираем кавычки в начале и в конце строки, если они присутствуют
+                    if (base64Image.startsWith("\"") && base64Image.endsWith("\"")) {
+                        base64Image = base64Image.substring(1, base64Image.length() - 1);
+                    }
+                    logger.info("Fetched base64 image for patent ID: {}", patentId);
+                    return base64Image;
+                })
+                .onErrorResume(WebClientResponseException.NotFound.class, e -> {
+                    logger.warn("Image not found for patent ID: {}", patentId);
+                    return Mono.just(""); // Возвращаем пустую строку, если изображение не найдено
+                })
+                .onErrorResume(e -> {
+                    logger.error("Error fetching image for patent ID: {}", patentId, e);
+                    return Mono.just(""); // Возвращаем пустую строку в случае других ошибок
+                });
+    }
+
+    // Updated method to fetch patents and attach images when necessary
     public Flux<PatentDto> fetchPatents(String endpoint, int page, String date) {
         logger.info("Fetching patents from endpoint: {}/bulletin/published/{}/{}/{}", BASE_URL, endpoint, page, date);
 
@@ -39,7 +65,7 @@ public class PatentApiClient {
                     return Flux.fromIterable(patents);
                 })
                 .flatMap(dto -> {
-                    // Call fetchAndAttachImage only if endpoint is "select_tzizo"
+                    // Call fetchImageBase64 only if endpoint is "select_tzizo"
                     if ("select_tzizo".equals(endpoint)) {
                         return fetchAndAttachImage(dto, "select_tz_patent_image");
                     } else {
@@ -49,6 +75,13 @@ public class PatentApiClient {
                 .doOnError(error -> logger.error("Error fetching patents for {} on {}: {}", endpoint, date, error.getMessage()));
     }
 
+    private Mono<PatentDto> fetchAndAttachImage(PatentDto patent, String endpoint) {
+        return fetchImageBase64(String.valueOf(patent.getId()), endpoint)
+                .map(base64Image -> {
+                    patent.setImageBase64(base64Image);
+                    return patent;
+                });
+    }
 
     public Mono<LinkedHashMap<Integer, String>> fetchDatesForYear(int year) {
         return webClient.get()
@@ -87,29 +120,5 @@ public class PatentApiClient {
             logger.error("Error decoding Unicode JSON response: {}", json, e);
             throw new RuntimeException("Error decoding Unicode JSON response", e);
         }
-    }
-
-    /**
-     * Fetches the image for a patent and attaches it as a Base64 string.
-     */
-    private Mono<PatentDto> fetchAndAttachImage(PatentDto patent, String endpoint) {
-        String imageEndpoint = endpoint + "/" + patent.getId() + "?eksp=false";
-        return webClient.get()
-                .uri("/bulletin/"+imageEndpoint)
-                .retrieve()
-                .bodyToMono(byte[].class)
-                .map(imageBytes -> {
-                    String base64Image = Base64.getEncoder().encodeToString(imageBytes);
-                    patent.setImageBase64(base64Image);
-                    logger.info("Fetched image for patent ID: {}", patent.getId());
-                    return patent;
-                })
-                .onErrorResume(WebClientResponseException.NotFound.class, e -> {
-                    return Mono.just(patent);
-                })
-                .onErrorResume(e -> {
-                    // Log other errors but continue processing
-                    return Mono.just(patent);
-                });
     }
 }
