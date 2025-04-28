@@ -228,6 +228,11 @@ public class PatentService {
     public Patent getPatentByDocNumber(String docNumber) {
         return patentRepository.findByDocNumber(docNumber).orElse(null);
     }
+
+    public List<Patent> findAllBySecurityDocNumberIn(List<String> securityDocNumbers) {
+        return patentRepository.findAllBySecurityDocNumberIn(securityDocNumbers);
+    }
+
     @Transactional
     public boolean isPatentExists(Patent patent) {
         if (patent == null) return false;
@@ -235,11 +240,12 @@ public class PatentService {
         String securityDocNumber = patent.getSecurityDocNumber();
         String registrationNumber = patent.getRegistrationNumber();
         String category = patent.getCategory();
+        String siteType = patent.getPatentSite();
 
         if (securityDocNumber == null && registrationNumber == null) return false;
 
         return (securityDocNumber != null) ?
-                patentRepository.findBySecurityDocNumberAndCategory(securityDocNumber, category).isPresent() :
-                patentRepository.findByRegistrationNumberAndCategory(registrationNumber, category).isPresent();
+                patentRepository.findBySecurityDocNumberAndCategoryAndPatentSite(securityDocNumber, category, siteType).isPresent() :
+                patentRepository.findByRegistrationNumberAndCategoryAndPatentSite(registrationNumber, category, siteType).isPresent();
     }
 }

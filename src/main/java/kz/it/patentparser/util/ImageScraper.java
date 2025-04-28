@@ -37,14 +37,19 @@ public class ImageScraper {
     }
 
 
-    public static synchronized String captureImageBase64(String patentUrl, Logger logger) {
+    public static String captureImageBase64(String patentUrl, Logger logger) {
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--headless", "--disable-gpu", "--no-sandbox");
+
+        WebDriver driver = new ChromeDriver(options);
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+
         try {
             driver.get(patentUrl);
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("body")));
 
             File screenshot = null;
 
-            // Try to find the image element without waiting
             try {
                 WebElement imgElement = driver.findElement(By.cssSelector("div.plan_img5 img, div.plan_img img"));
                 if (imgElement.isDisplayed()) {
@@ -56,7 +61,7 @@ public class ImageScraper {
                     WebElement textElement = driver.findElement(By.cssSelector("div.col-lg-4 h3"));
                     if (textElement.isDisplayed()) {
                         logger.info("Text captured successfully.");
-                        return "text/"+textElement.getText();
+                        return "text/" + textElement.getText();
                     }
                 } catch (NoSuchElementException e1) {
                     logger.warn("No image or text found on the page. " + e1);
@@ -71,15 +76,17 @@ public class ImageScraper {
             byte[] fileContent = Files.readAllBytes(screenshot.toPath());
             return Base64.getEncoder().encodeToString(fileContent);
 
-        } catch (NoSuchElementException e) {
-            logger.warn("No image or text found on the page. " + e);
         } catch (TimeoutException e) {
             logger.error("Page elements did not load in time.", e);
         } catch (Exception e) {
             logger.error("Error capturing image", e);
+        } finally {
+            driver.quit(); // ВАЖНО: закрыть драйвер после каждого вызова!
         }
+
         return null;
     }
+
 
 
 }

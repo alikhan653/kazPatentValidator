@@ -16,7 +16,7 @@ import java.util.Optional;
 @Repository
 public interface PatentRepository extends JpaRepository<Patent, Long>, JpaSpecificationExecutor<Patent> {
     Optional<Patent> findByApplicationNumber(String applicationNumber);
-    Optional<Patent> findBySecurityDocNumberAndCategory(String securityDocNumber, String category);
+    Optional<Patent> findBySecurityDocNumberAndCategoryAndPatentSite(String securityDocNumber, String category, String patentSite);
     @Query("SELECT p FROM Patent p " +
             "LEFT JOIN PatentAdditionalField af1 ON p.id = af1.patent.id AND af1.label = 'Класс МКТУ' " +
             "WHERE " +
@@ -47,7 +47,7 @@ public interface PatentRepository extends JpaRepository<Patent, Long>, JpaSpecif
             @Param("securityDocNumber") String securityDocNumber,
             Pageable pageable
     );
-    Optional<Patent> findByRegistrationNumberAndCategory(String registrationNumber, String category);
+    Optional<Patent> findByRegistrationNumberAndCategoryAndPatentSite(String registrationNumber, String category, String patentSite);
     List<Patent> findByTitleContainingAndRegistrationDateBetween(String title, LocalDate startDate, LocalDate endDate);
     //expired value should check date from registrationDate, if it's more than 10 years, then it's expired
 
@@ -117,6 +117,7 @@ public interface PatentRepository extends JpaRepository<Patent, Long>, JpaSpecif
     );
 
     Optional<Patent> findByDocNumber(String docNumber);
+    List<Patent> findAllBySecurityDocNumberIn(List<String> securityDocNumbers);
 
     @Query("SELECT p FROM Patent p WHERE 1=1")
     Page<Patent> findAllPatents(Pageable pageable);

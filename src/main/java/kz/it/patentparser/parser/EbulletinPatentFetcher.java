@@ -139,6 +139,23 @@ public class EbulletinPatentFetcher implements PatentParser{
 
     private void savePatentData(List<Patent> patents) {
         logger.info("Saving patents to database...");
+        //check for duplicates
+        List<Patent> existingPatents = patentService.findAllBySecurityDocNumberIn(patents.stream()
+                .map(Patent::getSecurityDocNumber)
+                .collect(Collectors.toList()));
+        if (!existingPatents.isEmpty()) {
+            logger.info("Found {} existing patents in database.", existingPatents.size());
+            patents.removeAll(existingPatents);
+            logger.info("Removed {} existing patents from the list.", existingPatents.size());
+        } else {
+            logger.info("No existing patents found in database.");
+        }
+
+        if (patents.isEmpty()) {
+            logger.info("No new patents to save.");
+            return;
+        }
+
         patentService.savePatents(patents, logger);
         logger.info("Saved {} patents to database.", patents.size());
 
@@ -185,9 +202,6 @@ public class EbulletinPatentFetcher implements PatentParser{
         if(dto.getField33()!=null){
             additionalFields.add(new PatentAdditionalField(patent, "field_33", dto.getField33()));
         }
-        if(dto.getDescription()!=null){
-            additionalFields.add(new PatentAdditionalField(patent, "description", dto.getField33()));
-        }
         if(dto.getDate85()!=null){
             additionalFields.add(new PatentAdditionalField(patent, "date_85", dto.getDate85()));
         }
@@ -195,19 +209,19 @@ public class EbulletinPatentFetcher implements PatentParser{
             additionalFields.add(new PatentAdditionalField(patent, "field_86", dto.getField86()));
         }
         if(dto.getField181()!=null){
-            additionalFields.add(new PatentAdditionalField(patent, "field_181", dto.getField86()));
+            additionalFields.add(new PatentAdditionalField(patent, "field_181", dto.getField181()));
         }
         if(dto.getField730Ru()!=null){
-            additionalFields.add(new PatentAdditionalField(patent, "field_730", dto.getField86()));
+            additionalFields.add(new PatentAdditionalField(patent, "field_730", dto.getField730Ru()));
         }
         if(dto.getField526Ru()!=null){
-            additionalFields.add(new PatentAdditionalField(patent, "field_526", dto.getField86()));
+            additionalFields.add(new PatentAdditionalField(patent, "field_526", dto.getField526Ru()));
         }
         if(dto.getField591()!=null){
-            additionalFields.add(new PatentAdditionalField(patent, "field_591", dto.getField86()));
+            additionalFields.add(new PatentAdditionalField(patent, "field_591", dto.getField591()));
         }
         if(dto.getField510511()!=null){
-            additionalFields.add(new PatentAdditionalField(patent, "field_510", dto.getField86()));
+            additionalFields.add(new PatentAdditionalField(patent, "field_510", dto.getField510511()));
         }
         if(dto.getDescription()!=null){
             additionalFields.add(new PatentAdditionalField(patent, "referat", dto.getDescription()));

@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -65,16 +66,31 @@ public class PatentRetryService {
     }
 
 //    @Scheduled(fixedRate = 86400000) // Run once per day
-    public void fetchMissingImages(String order) {
-        logger.info("Starting image fetching for patents without images");
+public void fetchMissingImages(String order) {
+    logger.info("Starting image fetching for patents without images");
 
-        List<DocNumber> patentsWithoutImages = order.equals("desc") ? failedPatentRepository.findPatentsWithoutImagesDesc() : failedPatentRepository.findPatentsWithoutImagesAsc();
+    List<DocNumber> patentsWithoutImages = order.equals("desc")
+            ? failedPatentRepository.findPatentsWithoutImagesDesc()
+            : failedPatentRepository.findPatentsWithoutImagesAsc();
 
-        for (DocNumber patent : patentsWithoutImages) {
-            processPatentImage(patent);
-        }
-        logger.info("Image fetching finished for patents without images");
+    int THREAD_COUNT = 5;
+    ExecutorService executor = Executors.newFixedThreadPool(THREAD_COUNT);
+
+    for (DocNumber patent : patentsWithoutImages) {
+        executor.submit(() -> processPatentImage(patent));
     }
+
+    executor.shutdown();
+    try {
+        executor.awaitTermination(1, TimeUnit.HOURS);
+    } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.error("Image fetching interrupted", e);
+    }
+
+    logger.info("Image fetching finished for patents without images");
+}
+
 
     private void processPatentImage(DocNumber patent) {
         String url = generatePatentUrl(Integer.parseInt(patent.getDocumentNumber()), patent.getCategory());

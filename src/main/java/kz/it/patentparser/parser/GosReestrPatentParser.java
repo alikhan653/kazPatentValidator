@@ -80,13 +80,31 @@ public class GosReestrPatentParser implements PatentParser {
 
             for (Map.Entry<String, String> category : categories.entrySet()) {
                 try {
-                    logger.info("Processing category: {}", category.getKey());
-                    selectCategory(webDriver, wait, category.getKey(), category.getValue());
-                    switchToTextView(webDriver, wait);
+                    String categoryName = category.getKey();
+                    String categoryId = category.getValue();
+
+                    logger.info("Processing category: {}", categoryName);
+
+                    boolean isCategorySelected = selectCategory(webDriver, wait, categoryName, categoryId);
+                    if (!isCategorySelected) {
+                        logger.error("Failed to select category: {}", categoryName);
+                        continue;
+                    }
+                    if (!switchToTextView(webDriver, wait)) {
+                        logger.error("Skipping category due to view switch failure: {}", categoryName);
+                        continue;
+                    }
                     Thread.sleep(3000);
                     setPageSizeTo200(webDriver, wait);
                     Thread.sleep(3000);
+                    wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("LoadingPanel_LD")));
+                    wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("cvReestr_LD")));
+//                    if (!setFilterByDate(webDriver, wait)) {
+//                        logger.error("Skipping category due to filter setup failure: {}", categoryName);
+//                        continue;
+//                    }
                     patents.addAll(parsePatentsWithPagination(webDriver, wait, category.getKey(), from, both));
+                    logger.info("Parsed {} patents for category: {}", patents.size(), categoryName);
                 } catch (Exception e) {
                     logger.error("Error parsing category: {}", category.getKey(), e);
                 }
@@ -131,11 +149,25 @@ public class GosReestrPatentParser implements PatentParser {
 
             try {
                 logger.info("Processing category: {}", category);
-                selectCategory(webDriver, wait, category, categoryId);
-                switchToTextView(webDriver, wait);
+
+                logger.info("Processing category: {}", category);
+
+                boolean isCategorySelected = selectCategory(webDriver, wait, category, categoryId);
+                if (!isCategorySelected) {
+                    logger.error("Failed to select category: {}", category);
+                    return patents;
+                }
+                if (!switchToTextView(webDriver, wait)) {
+                    logger.error("Skipping category due to view switch failure: {}", category);
+                    return patents;
+                }
                 Thread.sleep(3000);
                 setPageSizeTo200(webDriver, wait);
                 Thread.sleep(3000);
+//                if (!setFilterByDate(webDriver, wait)) {
+//                    logger.error("Skipping category due to filter setup failure: {}", category);
+//                    return patents;
+//                }
                 patents.addAll(parsePatentsWithPagination(webDriver, wait, category, from, both));
             } catch (Exception e) {
                 logger.error("Error parsing category: {}", category, e);
@@ -158,7 +190,7 @@ public class GosReestrPatentParser implements PatentParser {
         return categories;
     }
 
-    private void selectCategory(WebDriver webDriver, WebDriverWait wait, String categoryName, String categoryId) {
+    private boolean selectCategory(WebDriver webDriver, WebDriverWait wait, String categoryName, String categoryId) {
         try {
             logger.info("Selecting category: {}", categoryName);
             wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("LoadingPanel_LD")));
@@ -177,14 +209,14 @@ public class GosReestrPatentParser implements PatentParser {
             logger.info("Search button clicked for category: {}", categoryName);
 
             logger.info("Successfully selected category: {}", categoryName);
-        } catch (TimeoutException e) {
-            logger.error("Timeout while selecting category: {}", categoryName, e);
-        } catch (NoSuchElementException e) {
-            logger.error("Could not find dropdown elements for category: {}", categoryName, e);
+            return true;
+        } catch (TimeoutException | NoSuchElementException e) {
+            logger.error("Error while selecting category '{}': {}", categoryName, e.getMessage(), e);
+            return false;
         }
     }
 
-    private void stepToLastPage(WebDriver webDriver, WebDriverWait wait) {
+    private boolean stepToLastPage(WebDriver webDriver, WebDriverWait wait) {
         try {
             List<WebElement> paginationButtons = wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(
                     By.cssSelector("a.dxp-num.dxRoundRippleTarget.dxRippleTarget")));
@@ -194,12 +226,10 @@ public class GosReestrPatentParser implements PatentParser {
             wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("CVReestr_LD")));
             Thread.sleep(2000);
             logger.info("Navigated to last page.");
-        } catch (TimeoutException e) {
-            logger.error("Timeout while navigating to last page: {}", e);
-        } catch (NoSuchElementException e) {
-            logger.error("No pagination buttons found: {}", e);
-        } catch (InterruptedException e) {
-            logger.error("Error navigating to last page: {}", e);
+            return true;
+        } catch (TimeoutException | NoSuchElementException | InterruptedException e) {
+            logger.error("Error while navigating to last page: {}", e.getMessage(), e);
+            return false;
         }
     }
 
@@ -216,6 +246,51 @@ public class GosReestrPatentParser implements PatentParser {
         }
         return 1000;
     }
+
+    private boolean setFilterByDate(WebDriver webDriver, WebDriverWait wait) {
+        try {
+            // Ищем элементы при каждой попытке
+            List<WebElement> headerElements = webDriver.findElements(By.cssSelector("div.dxcvHeader_Material"));
+
+            for (WebElement header : headerElements) {
+                String text = header.getText().trim();
+
+                if (text.contains("Дата регистрации") || text.contains("Дата подачи заявки")) {
+                    try {
+                        // Ожидаем, пока элемент не станет кликабельным
+                        WebElement clickableHeader = wait.until(ExpectedConditions.elementToBeClickable(header));
+
+                        // Кликаем на элемент
+                        clickableHeader.click();
+
+                        // Ожидаем изменения состояния, затем находим элемент снова
+                        wait.until(ExpectedConditions.stalenessOf(clickableHeader));
+
+                        // Снова находим элемент и кликаем второй раз
+                        clickableHeader = wait.until(ExpectedConditions.elementToBeClickable(header));
+                        clickableHeader.click();
+
+                        logger.info("Clicked on filter header: {}", text);
+                        return true;
+                    } catch (StaleElementReferenceException e) {
+                        logger.error("Элемент протух, пробую снова: {}", e.getMessage());
+                        // Возможно, добавить дополнительные попытки, если необходимо
+                    } catch (Exception e) {
+                        logger.error("Ошибка при клике на фильтр для '{}': {}", text, e.getMessage(), e);
+                        return false;
+                    }
+                }
+            }
+
+            logger.warn("Не найден фильтр по дате.");
+            return false;
+
+        } catch (TimeoutException | NoSuchElementException e) {
+            logger.error("Error while setting date filter: {}", e.getMessage(), e);
+            return false;
+        }
+    }
+
 
     private List<Patent> parsePatentsWithPagination(WebDriver webDriver, WebDriverWait wait, String category, String paginationId, boolean both) throws InterruptedException {
         List<Patent> patents = new ArrayList<>();
@@ -610,26 +685,27 @@ public class GosReestrPatentParser implements PatentParser {
         }
         return null;
     }
-    public void switchToTextView(WebDriver driver, WebDriverWait wait) {
+    public boolean switchToTextView(WebDriver driver, WebDriverWait wait) {
         try {
-
-            // Wait for the button to be present and visible
             WebElement textViewButton = wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//button[@data-view='2']")));
 
-            // Scroll into view (fix for hidden buttons)
             ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", textViewButton);
-
-            // Click using JavaScript (fix for non-interactable elements)
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", textViewButton);
 
             wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("LoadingPanel_LD")));
             wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("cvReestr_LD")));
 
             logger.info("Switched to 'Текст' view successfully.");
+            return true;
+        } catch (TimeoutException | NoSuchElementException e) {
+            logger.error("Element not found or not clickable for switching to 'Текст' view: {}", e.getMessage(), e);
+            return false;
         } catch (Exception e) {
-            logger.error("Failed to switch to 'Текст' view: " + e);
+            logger.error("Unexpected error while switching to 'Текст' view: {}", e.getMessage(), e);
+            return false;
         }
     }
+
     private void setPageSizeTo200(WebDriver webDriver, WebDriverWait wait) {
         try {
             Thread.sleep(3000);
@@ -734,6 +810,10 @@ public class GosReestrPatentParser implements PatentParser {
         patent.setBulletinDate(getDateField(cardText, "Дата бюллетеня:?"));
         patent.setAuthors(getFieldValue(cardText, "Автор\\(-ы\\)?:?"));
         patent.setSortName(getFieldValue(cardText, "Наименование сорта, породы:?"));
+        //if sort name is not empty and title is empty, set title to sort name
+        if (patent.getSortName() != null && patent.getTitle() == null) {
+            patent.setTitle(patent.getSortName());
+        }
 //        patent.setPatentHolder(getFieldValue(cardText, "Патентообладатель:?"));
 //        patent.setOwner(getFieldValue(cardText, "Владелец:?"));
 
